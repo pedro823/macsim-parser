@@ -8,7 +8,10 @@
 #include <errno.h>
 #include <ctype.h>
 
-void checkOperand(char *line, SymbolTable alias_table, int i, Operator word, int operandNo) {
+Operand checkOperand(char *line, SymbolTable alias_table, int i, Operator word, int operandNo) {
+    int len = strlen(line), type;
+    Operand ret;
+    type = word->opd_types[operandNo];
     
 }
 
@@ -65,7 +68,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
             return 0;
         }
         // Label registered. Scans next word
-        for(i; i < len && line[i] <= 32; i++); // Takes off all spaces
+        for(; i < len && line[i] <= 32; i++); // Takes off all spaces
         if(i >= len || line[i] == '*') {
             // Line was only a label
             // i
@@ -91,5 +94,8 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         (*instr)->label = "n/a";
     }
     (*instr)->op = word;
+    for(; i < len && line[i] <= 32; i++); // Takes off all spaces
+    for(j = 0; j < 3; j++) {
 
+    }
 }
