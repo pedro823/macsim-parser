@@ -12,7 +12,7 @@ Operand checkOperand(char *line, SymbolTable alias_table, int i, Operator word, 
     int len = strlen(line), type;
     Operand ret;
     type = word->opd_types[operandNo];
-    
+
 }
 
 int parse(const char *s, SymbolTable alias_table, Instruction **instr, const char **errptr) {
@@ -25,7 +25,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
     line = strdup(s);
     len = strlen(line);
     for(i = 0; i < len && line[i] <= 32; i++); // Takes off all preceding spaces
-    analizer = buffer_create();]
+    analizer = buffer_create();
     if(line[i] == '*' || i >= len) {
         // Line is composed only by comment
         return 1;
@@ -40,8 +40,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         (analizer[0] >= 'A' && analizer[0] <= 'Z')) {
             // Label is valid
             for(j = 1; j < analizer->i; j++) {
-                if(!(analizer[j] == '_' || (analizer[j] >= 'a' && analizer[j] <= 'z') ||
-                (analizer[j] >= 'A' && analizer[j] <= 'Z') || (analizer[j] >= '0' && analizer[j] <= '9'))) {
+                if(!(analizer[j] == '_') && !isalnum(analizer[j])) {
                     // Label is invalid
                     //i - analizer->i + j
                     *errptr = s[i - analizer->i + j];
@@ -94,8 +93,32 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         (*instr)->label = "n/a";
     }
     (*instr)->op = word;
-    for(; i < len && line[i] <= 32; i++); // Takes off all spaces
+    Operator lineOp = word;
     for(j = 0; j < 3; j++) {
+        for(; i < len && line[i] <= 32; i++); // Takes off all spaces
+        buffer_reset(analizer);
+        OperandType type = lineOp.opd_types[j];
+        if(type == OP_NONE) {
+            if(i >= len || line[i] == ';' || line[i] == '*')
+                return 1;
+            // There is something after OP_NONE
+            // i
+            set_error_msg("Unexpected character");
+            *errptr = s[i];
+            return 0;
+        }
+        if(j > 0 && line[i] != ',') {
+            set_error_msg("Expected comma");
+            *errptr = s[i];
+            return 0;
+        }
+        switch(type) {
 
+            case BYTE1:
+                //Consumes until , ; or space
+                for(; i < len && line[i] > 32; i++)
+                
+            break;
+        }
     }
 }

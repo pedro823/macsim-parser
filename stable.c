@@ -42,7 +42,7 @@ int buscaBin (SymbolTable table, const char *key) {
 	}
 	if (meio < table->topo && comp < 0){
 		return meio+1;
-	}	
+	}
 	return meio;
 }
 
