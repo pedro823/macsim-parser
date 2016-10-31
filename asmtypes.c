@@ -80,17 +80,17 @@ Instruction *instr_create(const char *label, const Operator *op, Operand *opds[3
   Instruction *ret = emalloc(sizeof(Instruction));
 
   ret->pos = ret->lineno = 0;
-  
+
   if (label)
     ret->label = estrdup(label);
   else
     ret->label = 0;
 
   ret->op = op;
-  
+
   for (int i = 0; i < 3; i++)
     ret->opds[i] = opds[i];
-  
+
   ret->next = 0;
 
   return ret;
@@ -102,9 +102,9 @@ Instruction *instr_create(const char *label, const Operator *op, Operand *opds[3
 void instr_destroy(Instruction *instr)
 {
   free(instr->label);
-  
+
   for (int i = 0; i < 3; i++)
     if (instr->opds[i]) operand_destroy(instr->opds[i]);
-  
+
   free(instr);
 }

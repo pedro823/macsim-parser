@@ -107,18 +107,62 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
             *errptr = s[i];
             return 0;
         }
-        if(j > 0 && line[i] != ',') {
-            set_error_msg("Expected comma");
-            *errptr = s[i];
-            return 0;
+        if(j > 0) {
+            if(line[i] != ',') {
+                set_error_msg("Expected comma");
+                *errptr = s[i];
+                return 0;
+            }
+            //consumes until another word again
+            for(i++; i < len && line[i] <= 32; i++);
         }
         switch(type) {
 
             case BYTE1:
-                //Consumes until , ; or space
-                for(; i < len && line[i] > 32; i++)
-                
+                //Consumes until ',', ';' or space
+                for(; i < len && isdigit(line[i]); i++)
+                    buffer_push_back(analizer, line[i]);
+                int opNumber = atoi(analizer);
+                if(opNumber > 255 || opNumber < 0) {
+                    //Number doesn't fit
+                    //i - 1
+                    set_error_msg("Number does not fit in BYTE1");
+                    *errptr = s[i - 1];
+                }
             break;
+
+            case BYTE2:
+                //Consumes until ',', ';' or space
+                for(; i < len && isdigit(line[i]); i++)
+                    buffer_push_back(analizer, line[i]);
+                int opNumber = atoi(analizer);
+                if(opNumber > 65535 || opNumber < 0) {
+                    //Number doesn't fit
+                    //i - 1
+                    set_error_msg("Number does not fit in BYTE1");
+                    *errptr = s[i - 1];
+                }
+            break;
+
+            case BYTE3:
+                //Consumes until ',', ';' or space
+                for(; i < len && isdigit(line[i]); i++)
+                    buffer_push_back(analizer, line[i]);
+                int opNumber = atoi(analizer);
+                if(opNumber > 167772150 || opNumber < 0) {
+                    //Number doesn't fit
+                    //i - 1
+                    set_error_msg("Number does not fit in BYTE1");
+                    *errptr = s[i - 1];
+                }
+            break;
+
+            case TETRABYTE:
+            break;
+
+            case LABEL:
+
+            
         }
     }
 }
