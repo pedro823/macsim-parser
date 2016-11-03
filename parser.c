@@ -20,6 +20,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
     Buffer *analizer;
     Operator *word;
     InsertionResult result;
+    EntryData *findResult;
     int i, j, len;
 
     line = strdup(s);
@@ -33,7 +34,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
     for(; line[i] > 32 && line[i] != ';' && line[i] != '*'; i++) {
         buffer_push_back(analizer, line[i]);
     }
-    word = optable_find(analizer->data);
+    word = optable_find(&(analizer->data));
     if(word == NULL) {
         // First word is label
         if(analizer[0] == '_' || (analizer[0] >= 'a' && analizer[0] <= 'z') ||
@@ -79,7 +80,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         for(; i < len && line[i] > 32 && line[i] != ';' && line[i] != '*'; i++) {
             buffer_push_back(analizer, line[i]);
         }
-        word = optable_find(analizer->data);
+        word = optable_find(&(analizer->data));
         if(word == NULL) {
             // Word after label is not an Operator
             // i - analizer->i + 1
@@ -128,6 +129,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                     //i - 1
                     set_error_msg("Number does not fit in BYTE1");
                     *errptr = s[i - 1];
+                    return 0;
                 }
             break;
 
@@ -139,8 +141,9 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 if(opNumber > 65535 || opNumber < 0) {
                     //Number doesn't fit
                     //i - 1
-                    set_error_msg("Number does not fit in BYTE1");
+                    set_error_msg("Number does not fit in BYTE2");
                     *errptr = s[i - 1];
+                    return 0;
                 }
             break;
 
@@ -152,17 +155,121 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 if(opNumber > 167772150 || opNumber < 0) {
                     //Number doesn't fit
                     //i - 1
-                    set_error_msg("Number does not fit in BYTE1");
+                    set_error_msg("Number does not fit in BYTE3");
                     *errptr = s[i - 1];
+                    return 0;
                 }
             break;
 
             case TETRABYTE:
+                //Consumes until ',', ';' or space
+                for(; i < len && isdigit(line[i]); i++)
+                    buffer_push_back(analizer, line[i]);
+                long long opNumber = atoll(analizer);
+                if(opNumber > 4294967295 || opNumber < 0) {
+                    //Number doesn't fit
+                    //i - 1
+                    set_error_msg("Number does not fit in TETRABYTE");
+                    *errptr = s[i - 1];
+                    return 0;
+                }
             break;
 
             case LABEL:
+                if(line[i] == '_' || isalpha(line[i])) {
+                    buffer_push_back(analizer, line[i]);
+                    i++;
+                    for(; i < len && (isalnum(line [i]) || line[i] == '_'); i++) {
+                        buffer_push_back(analizer, line[i]);
+                    }
+                    findResult = stable_find(alias_table, &(analizer));
+                    if (findResult == NULL) {
+                        // Invalid/not registered label
+                        // i
+                        if (line[i] <= 32)
+                            set_error_msg("Label not registered");
+                        else
+                            set_error_msg("Invalid label");
+                        *errptr = s[i];
+                        return 0;
+                    }
+                }
+                else {
+                    // Label contains invalid first character
+                    // i
+                    set_error_msg("Invalid label");
+                    *errptr = s[i];
+                    return 0;
+                }
+            break;
 
-            
+            case STRING:
+                if (line[i] == '"') {
+                    buffer_push_back(analizer, line[i]);
+                    i++;
+                    for (; i < len && line[i] != '"'; i++)
+                        buffer_push_back(analizer, line[i]);
+                    if (i >= len) {
+                        // Expected ending quote
+                        // i
+                        set_error_msg("Expected quote");
+                        *errptr = s[i];
+                        return 0;
+                    }
+                }
+                else {
+                    // Expected quote
+                    set_error_msg("Expected quote");
+                    *errptr = s[i];
+                    return 0;
+                }
+            break;
+
+            case REGISTER:
+                if (line[i] == '$') {
+                    i++;
+                    for (; i < len && isdigit(line[i]); i++)
+                        buffer_push_back(analizer, line[i]);
+                    int regNumber = atoi(analizer);
+                    if (regNumber > 255 && regNumber < 0) {
+                        //Invalid register number
+                        // i
+                        set_error_msg("Invalid register number");
+                        *errptr = s[i];
+                        return 0;
+                    }
+                }
+                else {
+                    if (line[i] == '_' || isalpha(line[i])) {
+                        buffer_push_back(analizer, line[i])
+                    }
+                }
+            break;
+
+            case IMMEDIATE:
+
+            break;
+
+            case ADDR2:
+
+            break;
+
+            case ADDR3:
+
+            break;
+
+            case NUMBER_TYPE:
+
+            break;
+
+            case REGISTER | NEG_NUMBER | TETRABYTE:
+
+            break;
+
+            case TETRABYTE | NEG_NUMBER:
+
+            break;
+
         }
     }
 }
