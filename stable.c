@@ -127,7 +127,7 @@ InsertionResult stable_insert(SymbolTable table, const char *key) {
 }
 
 int compare(const void *key, const void *tableStuff) {
-	return strcmp((char*) key, (Entry*) tableStuff->key);
+	return strcmp((char*) key, ((Entry*) tableStuff)->key);
 }
 
 /*
@@ -136,11 +136,11 @@ int compare(const void *key, const void *tableStuff) {
   Given a key, returns a pointer to the data associated with it, or a
   NULL pointer if the key is not found.
 */
-Entrydata *stable_find(SymbolTable table, const char *key) {
+EntryData *stable_find(SymbolTable table, const char *key) {
 	Entry *x = (Entry*) bsearch(key, table->Table, table->topo, sizeof(Entry), compare);
 	if (x == NULL)
 		return NULL;
-	return x->data;
+	return &(x->data);
 }
 /*
 EntryData *stable_find(SymbolTable table, const char *key) {

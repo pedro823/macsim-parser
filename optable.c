@@ -9,7 +9,7 @@
 
 // Array with all operators.
 static const int num_ops = 57;  // Number of operators.
-  
+
 static const Operator operators[] =
   {
     { .name = "ADD",  .opcode = ADD,  .opd_types = { REGISTER, REGISTER, IMMEDIATE } },
@@ -81,6 +81,6 @@ const Operator *optable_find(const char *name)
 {
   return (const Operator *) bsearch(name, operators, num_ops, sizeof(Operator),
                                     compar);
-  
+
   return 0;
 }
