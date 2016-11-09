@@ -16,6 +16,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
     InsertionResult result;
     Instruction *finalInstr;
     int i, j, len;
+    Operand labelRef;
 
     line = estrdup(s);
     len = strlen(line);
@@ -96,7 +97,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         OperandType type = lineOp.opd_types[j];
         if(type == OP_NONE) {
             if(i >= len || line[i] == ';' || line[i] == '*')
-                return 1;
+                continue;
             // There is something after OP_NONE
             // i
             set_error_msg("Unexpected character");
@@ -125,6 +126,8 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 if(opNumber >= 0 && opNumber <= 255) {
                     // Match
                     opds[j] = operand_create_number(opNumber);
+                    labelRef.type = BYTE1;
+                    labelRef.value.num = opNumber;
                     continue;
                 }
             }
@@ -136,6 +139,8 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 if(opNumber >= 0 && opNumber <= 65535) {
                     // Match
                     opds[j] = operand_create_number(opNumber);
+                    labelRef.type = BYTE2;
+                    labelRef.value.num = opNumber;
                     continue;
                 }
             }
@@ -147,6 +152,8 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 if(opNumber >= 0 && opNumber <= 167772150) {
                     // Match
                     opds[j] = operand_create_number(opNumber);
+                    labelRef.type = BYTE3;
+                    labelRef.value.num = opNumber;
                     continue;
                 }
             }
@@ -154,10 +161,12 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         if(type & TETRABYTE) {
             for (p = 0; p < analizer->i && isdigit(analizer->data[p]); p++);
             if (p == analizer->i) {
-                octa opNumber = atoll(analizer->data);
+                uocta opNumber = atoll(analizer->data);
                 if(opNumber >= 0 && opNumber <= 4294967295) {
                     // Match
                     opds[j] = operand_create_number(opNumber);
+                    labelRef.type = TETRABYTE;
+                    labelRef.value.num = opNumber;
                     continue;
                 }
             }
@@ -188,7 +197,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 for (p = 1; p < analizer->i && isdigit(analizer->data[p]); p++);
                 if (p == analizer->i) {
                     octa opNumber = atoll(analizer->data);
-                    if(opNumber >= 0 && opNumber <= 4294967295) {
+                    if(opNumber <= 0 && opNumber >= -4294967295) {
                         // Match
                         (*instr)->opds[j] = operand_create_number(opNumber);
                         continue;
@@ -209,6 +218,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         *errptr = s + i - analizer->i + 1;
         return 0;
     }
+    result.data =
     finalInstr = instr_create(label, word, opds);
     (*instr) = finalInstr;
     return 1;
