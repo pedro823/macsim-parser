@@ -3,6 +3,7 @@
 #include "buffer.h"
 #include "parser.h"
 #include "optable.h"
+#include "mactypes.h"
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -15,6 +16,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
     Operator *word;
     InsertionResult result;
     EntryData *findResult;
+    Instruction *finalInstr;
     int i, j, len;
 
     line = strdup(s);
@@ -38,7 +40,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 if(!(analizer[j] == '_') && !isalnum(analizer[j])) {
                     // Label is invalid
                     //i - analizer->i + j
-                    *errptr = s[i - analizer->i + j];
+                    errptr = &(s + i - analizer->i + j);
                     set_error_msg("Invalid label");
                     return 0;
                 }
@@ -48,7 +50,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
             if(result.new == 0) {
                 // Label was already declared
                 // i - 1
-                *errptr = s[i - 1];
+                errptr = &(s + i - 1);
                 set_error_msg("Label %s was already declared\n", analizer->data);
                 return 0;
             }
@@ -57,7 +59,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         else {
             // Label is invalid
             // i - buffer->topo + 1
-            *errptr = s[i - analizer->i + 1];
+            errptr = &(s + i - analizer->i + 1);
             set_error_msg("Invalid label\n");
             return 0;
         }
@@ -66,7 +68,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         if(i >= len || line[i] == '*') {
             // Line was only a label
             // i
-            *errptr = s[i];
+            errptr = &(s + i);
             set_error_msg("Expected operator\n");
             return 0;
         }
@@ -78,18 +80,19 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         if(word == NULL) {
             // Word after label is not an Operator
             // i - analizer->i + 1
-            *errptr = s[i - analizer->i + 1];
+            errptr = &(s + i - analizer->i + 1);
             set_error_msg("Expected operator\n");
             return 0;
         }
-        (*instr)->label = label;
     }
     else {
         label = "n/a";
-        (*instr)->label = "n/a";
     }
     (*instr)->op = word;
     Operator lineOp = (*word);
+    Operand *opds[3];
+    for(j = 0; j < 3; j++)
+        opds[j] = 0;
     for(j = 0; j < 3; j++) {
         for(; i < len && line[i] <= 32; i++); // Takes off all spaces
         buffer_reset(analizer);
@@ -100,13 +103,13 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
             // There is something after OP_NONE
             // i
             set_error_msg("Unexpected character");
-            *errptr = s[i];
+            errptr = &(s + i);
             return 0;
         }
         if(j > 0) {
             if(line[i] != ',') {
                 set_error_msg("Expected comma");
-                *errptr = s[i];
+                errptr = &(s + i);
                 return 0;
             }
             //consumes until another word again
@@ -115,201 +118,101 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         //consumes next word
         for(; i < len && line[i] > 32 && line[i] != '*' && line[i] != ';' && line[i] != ','; i++)
             buffer_push_back(analizer, line[i]);
+        // Is it a valid label?
+
         int sentinel = 0, p = 0;
         if(type & BYTE1) {
-            int opNumber = atoi(analizer->data);
-            if(opNumber >= 0 && opNumber <= 255) {
-                // Match
-                (*instr)->opds[j] = operand_create_number(opNumber);
+            for (p = 0; p < analizer->top && isdigit(analizer->data[p]); p++);
+            if (p == analizer->top) {
+                int opNumber = atoi(analizer->data);
+                if(opNumber >= 0 && opNumber <= 255) {
+                    // Match
+                    opds[j] = operand_create_number(opNumber);
+                    continue;
+                }
             }
         }
         if(type & BYTE2) {
-            int opNumber = atoi(analizer->data);
-            if(opNumber >= 0 && opNumber <= 65535) {
-                // Match
-                (*instr)->opds[j] = operand_create_number(opNumber);
+            for (p = 0; p < analizer->top && isdigit(analizer->data[p]); p++);
+            if (p == analizer->top) {
+                int opNumber = atoi(analizer->data);
+                if(opNumber >= 0 && opNumber <= 65535) {
+                    // Match
+                    opds[j] = operand_create_number(opNumber);
+                    continue;
+                }
             }
         }
         if(type & BYTE3) {
-            int opNumber = atoi(analizer->data);
-            if(opNumber >= 0 && opNumber <= 167772150) {
-                (*instr)->opds[j] = operand_create_number(opNumber);
+            for (p = 0; p < analizer->top && isdigit(analizer->data[p]); p++);
+            if (p == analizer->top) {
+                int opNumber = atoi(analizer->data);
+                if(opNumber >= 0 && opNumber <= 167772150) {
+                    // Match
+                    opds[j] = operand_create_number(opNumber);
+                    continue;
+                }
             }
         }
         if(type & TETRABYTE) {
-            int opNumber = atoll(analizer->data);
-            if(opNumber >= 0 && opNumber <= 4294967295) {
-                (*instr)->opds[j] = operand_create_number(opNumber);
+            for (p = 0; p < analizer->top && isdigit(analizer->data[p]); p++);
+            if (p == analizer->top) {
+                octa opNumber = atoll(analizer->data);
+                if(opNumber >= 0 && opNumber <= 4294967295) {
+                    // Match
+                    opds[j] = operand_create_number(opNumber);
+                    continue;
+                }
             }
         }
         if(type & LABEL) {
-
+            Entrydata *ret;
+            ret = stable_find(alias_table, analizer->data);
+            if (ret != NULL) {
+                opds[j] = operand_create_label(analizer->data);
+                continue;
+            }
         }
         if(type & REGISTER) {
-
+            if (analizer[0] == '$') {
+                for (p = 1; p < analizer->top && isdigit(analizer->data[p]); p++);
+                if (p == analizer->top) {
+                    int opNumber = atoi(analizer->data);
+                    if(opNumber >= 0 && opNumber <= 255) {
+                        // Match
+                        opds[j] = operand_create_register((unsigned char) opNumber);
+                        continue;
+                    }
+                }
+            }
         }
         if(type & NEG_NUMBER) {
-
+            if (analizer[0] == '-') {
+                for (p = 1; p < analizer->top && isdigit(analizer->data[p]); p++);
+                if (p == analizer->top) {
+                    octa opNumber = atoll(analizer->data);
+                    if(opNumber >= 0 && opNumber <= 4294967295) {
+                        // Match
+                        (*instr)->opds[j] = operand_create_number(opNumber);
+                        continue;
+                    }
+                }
+            }
         }
         if(type & STRING) {
-
+            if (analizer[0] == '"' && analizer->data[analizer->top - 1] == '"') {
+                // Match
+                analizer->data[analizer->top - 1] = '\0';
+                opds[j] = operand_create_string(&(analizer->data[1]));
+                continue;
+            }
         }
-        // No operand was matched
-
-
-        // switch(type) {
-        //
-        //     case BYTE1:
-        //         //Consumes until ',', ';' or space
-        //         for(; i < len && isdigit(line[i]); i++)
-        //             buffer_push_back(analizer, line[i]);
-        //         int opNumber = atoi(analizer);
-        //         if(opNumber > 255 || opNumber < 0) {
-        //             //Number doesn't fit
-        //             //i - 1
-        //             set_error_msg("Number does not fit in BYTE1");
-        //             *errptr = s[i - 1];
-        //             return 0;
-        //         }
-        //     break;
-        //
-        //     case BYTE2:
-        //         //Consumes until ',', ';' or space
-        //         for(; i < len && isdigit(line[i]); i++)
-        //             buffer_push_back(analizer, line[i]);
-        //         int opNumber = atoi(analizer);
-        //         if(opNumber > 65535 || opNumber < 0) {
-        //             //Number doesn't fit
-        //             //i - 1
-        //             set_error_msg("Number does not fit in BYTE2");
-        //             *errptr = s[i - 1];
-        //             return 0;
-        //         }
-        //     break;
-        //
-        //     case BYTE3:
-        //         //Consumes until ',', ';' or space
-        //         for(; i < len && isdigit(line[i]); i++)
-        //             buffer_push_back(analizer, line[i]);
-        //         int opNumber = atoi(analizer);
-        //         if(opNumber > 167772150 || opNumber < 0) {
-        //             //Number doesn't fit
-        //             //i - 1
-        //             set_error_msg("Number does not fit in BYTE3");
-        //             *errptr = s[i - 1];
-        //             return 0;
-        //         }
-        //     break;
-        //
-        //     case TETRABYTE:
-        //         //Consumes until ',', ';' or space
-        //         for(; i < len && isdigit(line[i]); i++)
-        //             buffer_push_back(analizer, line[i]);
-        //         long long opNumber = atoll(analizer);
-        //         if(opNumber > 4294967295 || opNumber < 0) {
-        //             //Number doesn't fit
-        //             //i - 1
-        //             set_error_msg("Number does not fit in TETRABYTE");
-        //             *errptr = s[i - 1];
-        //             return 0;
-        //         }
-        //     break;
-        //
-        //     case LABEL:
-        //         if(line[i] == '_' || isalpha(line[i])) {
-        //             buffer_push_back(analizer, line[i]);
-        //             i++;
-        //             for(; i < len && (isalnum(line [i]) || line[i] == '_'); i++) {
-        //                 buffer_push_back(analizer, line[i]);
-        //             }
-        //             findResult = stable_find(alias_table, &(analizer));
-        //             if (findResult == NULL) {
-        //                 // Invalid/not registered label
-        //                 // i
-        //                 if (line[i] <= 32)
-        //                     set_error_msg("Label not registered");
-        //                 else
-        //                     set_error_msg("Invalid label");
-        //                 *errptr = s[i];
-        //                 return 0;
-        //             }
-        //         }
-        //         else {
-        //             // Label contains invalid first character
-        //             // i
-        //             set_error_msg("Invalid label");
-        //             *errptr = s[i];
-        //             return 0;
-        //         }
-        //     break;
-        //
-        //     case STRING:
-        //         if (line[i] == '"') {
-        //             buffer_push_back(analizer, line[i]);
-        //             i++;
-        //             for (; i < len && line[i] != '"'; i++)
-        //                 buffer_push_back(analizer, line[i]);
-        //             if (i >= len) {
-        //                 // Expected ending quote
-        //                 // i
-        //                 set_error_msg("Expected quote");
-        //                 *errptr = s[i];
-        //                 return 0;
-        //             }
-        //         }
-        //         else {
-        //             // Expected quote
-        //             set_error_msg("Expected quote");
-        //             *errptr = s[i];
-        //             return 0;
-        //         }
-        //     break;
-        //
-        //     case REGISTER:
-        //         if (line[i] == '$') {
-        //             i++;
-        //             for (; i < len && isdigit(line[i]); i++)
-        //                 buffer_push_back(analizer, line[i]);
-        //             int regNumber = atoi(analizer);
-        //             if (regNumber > 255 && regNumber < 0) {
-        //                 //Invalid register number
-        //                 // i
-        //                 set_error_msg("Invalid register number");
-        //                 *errptr = s[i];
-        //                 return 0;
-        //             }
-        //         }
-        //         else {
-        //             if (line[i] == '_' || isalpha(line[i])) {
-        //                 buffer_push_back(analizer, line[i])
-        //             }
-        //         }
-        //     break;
-        //
-        //     case IMMEDIATE:
-        //
-        //     break;
-        //
-        //     case ADDR2:
-        //
-        //     break;
-        //
-        //     case ADDR3:
-        //
-        //     break;
-        //
-        //     case NUMBER_TYPE:
-        //
-        //     break;
-        //
-        //     case REGISTER | NEG_NUMBER | TETRABYTE:
-        //
-        //     break;
-        //
-        //     case TETRABYTE | NEG_NUMBER:
-        //
-        //     break;
-        //
-        // }
+        // i - analizer->top + 1
+        set_error_msg("Invalid operand");
+        errptr = &(s + i - analizer->top + 1);
+        return 0;
     }
+    finalInstr = instr_create(label, word, opds);
+    (*instr) = finalInstr;
+    return 1;
 }
