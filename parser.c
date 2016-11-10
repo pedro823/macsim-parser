@@ -14,13 +14,6 @@ int ispseudo(Operator op) {
     return op.opcode < 0;
 }
 
-int atoh(char* s) {
-    int ret = 0;
-    while(*s) {
-        if(*s)
-    }
-}
-
 int parse(const char *s, SymbolTable alias_table, Instruction **instr, const char **errptr) {
     char *line, *label;
     Buffer *analizer;
@@ -30,7 +23,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
 
     line = estrdup(s);
     len = strlen(line);
-    for(i = 0; i < len && line[i] <= 32; i++); // Takes off all preceding spaces
+    for(i = 0; i <= len && line[i] <= 32; i++); // Takes off all preceding spaces
     analizer = buffer_create();
     printf("parse:\n");
     printf("\tInitialized all variables\n");
@@ -109,7 +102,8 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         }
     }
     else {
-        printf("\tFirst word isnt label\n");
+        printf("\tFirst word isn't label\n");
+        //To do: Change to NULL
         label = "n/a";
     }
     printf("\tStarted to check operands\n");
@@ -153,57 +147,163 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         int p = 0;
         if(type & BYTE1) {
             printf("\tMATCH: BYTE1\n");
-            if(analizer->data[0] == '#') {
-                printf("\t\tHexadecimal number!\n");
-
+            if (analizer->data[0] == '#') {
+                for (p = 1; p < analizer->i && isdigit(analizer->data[p]); p++);
+                if(p == analizer->i) {
+                    char *pt;
+                    int opNumber = strtol(analizer->data + 1, &pt, 16);
+                    if(opNumber >= 0 && opNumber <= 255) {
+                        // Match
+                        printf("\t\tIt's an hexadecimal BYTE1!\n");
+                        opds[j] = operand_create_number(opNumber);
+                        continue;
+                    }
+                }
             }
-            for (p = 0; p < analizer->i && isdigit(analizer->data[p]); p++);
-            if (p == analizer->i) {
-                int opNumber = atoi(analizer->data);
-                if(opNumber >= 0 && opNumber <= 255) {
-                    // Match
-                    printf("\t\tIt's a BYTE1!\n");
-                    opds[j] = operand_create_number(opNumber);
-                    continue;
+            else {
+                for (p = 0; p < analizer->i && isdigit(analizer->data[p]); p++);
+                if (p == analizer->i) {
+                    int opNumber = atoi(analizer->data);
+                    if(opNumber >= 0 && opNumber <= 255) {
+                        // Match
+                        printf("\t\tIt's a BYTE1!\n");
+                        opds[j] = operand_create_number(opNumber);
+                        continue;
+                    }
+                }
+                else {
+                    EntryData *ret;
+                    printf("\tTrying to find %s at the stable...\n", analizer->data);
+                    ret = stable_find(alias_table, analizer->data);
+                    if (ret != NULL && ret->opd->type == NUMBER_TYPE) {
+                       printf("\tFound with success!\n");
+                       if (ret->opd->value.num >= 0 && ret->opd->value.num <= 255) {
+                         // Match
+                         printf("\t\tIt's a label to a BYTE1!\n");
+                         opds[j] = operand_create_number(ret->opd->value.num);
+                         continue;
+                       }
+                    }
                 }
             }
         }
         if(type & BYTE2) {
             printf("\tMATCH: BYTE2\n");
-            for (p = 0; p < analizer->i && isdigit(analizer->data[p]); p++);
-            if (p == analizer->i) {
-                int opNumber = atoi(analizer->data);
-                if(opNumber >= 0 && opNumber <= 65535) {
-                    // Match
-                    printf("\t\tIt's a BYTE2!\n");
-                    opds[j] = operand_create_number(opNumber);
-                    continue;
+            if (analizer->data[0] == '#') {
+                for (p = 1; p < analizer->i && isdigit(analizer->data[p]); p++);
+                if(p == analizer->i) {
+                    char *pt;
+                    int opNumber = strtol(analizer->data + 1, &pt, 16);
+                    if(opNumber >= 0 && opNumber <= 65535) {
+                        // Match
+                        printf("\t\tIt's an hexadecimal BYTE2!\n");
+                        opds[j] = operand_create_number(opNumber);
+                        continue;
+                    }
+                }
+            }
+            else {
+                for (p = 0; p < analizer->i && isdigit(analizer->data[p]); p++);
+                if (p == analizer->i) {
+                    int opNumber = atoi(analizer->data);
+                    if(opNumber >= 0 && opNumber <= 65535) {
+                        // Match
+                        printf("\t\tIt's a BYTE2!\n");
+                        opds[j] = operand_create_number(opNumber);
+                        continue;
+                    }
+                }
+                else {
+                    EntryData *ret;
+                    ret = stable_find(alias_table, analizer->data);
+                    if (ret != NULL && ret->opd->type == NUMBER_TYPE) {
+                       if (ret->opd->value.num >= 0 && ret->opd->value.num <= 65535) {
+                         // Match
+                         printf("\t\tIt's a label to a BYTE2!\n");
+                         opds[j] = operand_create_number(ret->opd->value.num);
+                         continue;
+                       }
+                    }
                 }
             }
         }
         if(type & BYTE3) {
             printf("\tMATCH: BYTE3\n");
-            for (p = 0; p < analizer->i && isdigit(analizer->data[p]); p++);
-            if (p == analizer->i) {
-                int opNumber = atoi(analizer->data);
-                if(opNumber >= 0 && opNumber <= 167772150) {
-                    // Match
-                    printf("\t\tIt's a BYTE3!\n");
-                    opds[j] = operand_create_number(opNumber);
-                    continue;
+            if (analizer->data[0] == '#') {
+                for (p = 1; p < analizer->i && isdigit(analizer->data[p]); p++);
+                if(p == analizer->i) {
+                    char *pt;
+                    int opNumber = strtol(analizer->data + 1, &pt, 16);
+                    if(opNumber >= 0 && opNumber <= 167772150) {
+                        // Match
+                        printf("\t\tIt's an hexadecimal BYTE3!\n");
+                        opds[j] = operand_create_number(opNumber);
+                        continue;
+                    }
+                }
+            }
+            else {
+                for (p = 0; p < analizer->i && isdigit(analizer->data[p]); p++);
+                if (p == analizer->i) {
+                    int opNumber = atoi(analizer->data);
+                    if(opNumber >= 0 && opNumber <= 167772150) {
+                        // Match
+                        printf("\t\tIt's a BYTE3!\n");
+                        opds[j] = operand_create_number(opNumber);
+                        continue;
+                    }
+                }
+                else {
+                    EntryData *ret;
+                    ret = stable_find(alias_table, analizer->data);
+                    if (ret != NULL && ret->opd->type == NUMBER_TYPE) {
+                       if (ret->opd->value.num >= 0 && ret->opd->value.num <= 167772150) {
+                         // Match
+                         printf("\t\tIt's a label to a BYTE3!\n");
+                         opds[j] = operand_create_number(ret->opd->value.num);
+                         continue;
+                       }
+                    }
                 }
             }
         }
         if(type & TETRABYTE) {
             printf("\tMATCH: TETRABYTE\n");
-            for (p = 0; p < analizer->i && isdigit(analizer->data[p]); p++);
-            if (p == analizer->i) {
-                uocta opNumber = atoll(analizer->data);
-                if(opNumber >= 0 && opNumber <= 4294967295) {
-                    // Match
-                    printf("\t\tIt's a TETRABYTE!\n");
-                    opds[j] = operand_create_number(opNumber);
-                    continue;
+            if (analizer->data[0] == '#') {
+                for (p = 1; p < analizer->i && isdigit(analizer->data[p]); p++);
+                if(p == analizer->i) {
+                    char *pt;
+                    uocta opNumber = strtol(analizer->data + 1, &pt, 16);
+                    if(opNumber >= 0 && opNumber <= 4294967295) {
+                        // Match
+                        printf("\t\tIt's an hexadecimal TETRABYTE!\n");
+                        opds[j] = operand_create_number(opNumber);
+                        continue;
+                    }
+                }
+            }
+            else {
+                for (p = 0; p < analizer->i && isdigit(analizer->data[p]); p++);
+                if (p == analizer->i) {
+                    uocta opNumber = atoll(analizer->data);
+                    if(opNumber >= 0 && opNumber <= 4294967295) {
+                        // Match
+                        printf("\t\tIt's a TETRABYTE!\n");
+                        opds[j] = operand_create_number(opNumber);
+                        continue;
+                    }
+                }
+                else {
+                    EntryData *ret;
+                    ret = stable_find(alias_table, analizer->data);
+                    if (ret != NULL && ret->opd->type == NUMBER_TYPE) {
+                       if (ret->opd->value.num >= 0 && ret->opd->value.num <= 4294967295) {
+                         // Match
+                         printf("\t\tIt's a label to a TETRABYTE!\n");
+                         opds[j] = operand_create_number(ret->opd->value.num);
+                         continue;
+                       }
+                    }
                 }
             }
         }
@@ -232,10 +332,33 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                     }
                 }
             }
+            else {
+                EntryData *ret;
+                ret = stable_find(alias_table, analizer->data);
+                if (ret != NULL && ret->opd->type == REGISTER) {
+                   // Match
+                   printf("\t\tIt's a label to a REGISTER!\n");
+                   opds[j] = operand_create_register(ret->opd->value.reg);
+                   continue;
+                }
+            }
         }
         if(type & NEG_NUMBER) {
             printf("\tMATCH: NEG_NUMBER\n");
-            if (analizer->data[0] == '-') {
+            if (analizer->data[0] == '#' && analizer->data[1] == '-') {
+                for (p = 2; p < analizer->i && isdigit(analizer->data[p]); p++);
+                if(p == analizer->i) {
+                    char *pt;
+                    octa opNumber = strtol(analizer->data + 1, &pt, 16);
+                    if(opNumber <= 0 && opNumber >= -4294967295) {
+                        // Match
+                        printf("\t\tIt's an hexadecimal NEG_NUMBER!\n");
+                        opds[j] = operand_create_number(opNumber);
+                        continue;
+                    }
+                }
+            }
+            else if (analizer->data[0] == '-') {
                 for (p = 1; p < analizer->i && isdigit(analizer->data[p]); p++);
                 if (p == analizer->i) {
                     octa opNumber = atoll(analizer->data);
@@ -244,6 +367,18 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                         printf("\t\tIt's a NEG_NUMBER!\n");
                         opds[j] = operand_create_number(opNumber);
                         continue;
+                    }
+                }
+                else {
+                    EntryData *ret;
+                    ret = stable_find(alias_table, analizer->data);
+                    if (ret != NULL && ret->opd->type == NUMBER_TYPE) {
+                       if (ret->opd->value.num <= 0 && ret->opd->value.num >= -4294967295) {
+                           // Match
+                           printf("\t\tIt's a label to a NEG_NUMBER!\n");
+                           opds[j] = operand_create_number(ret->opd->value.num);
+                           continue;
+                       }
                     }
                 }
             }
@@ -257,10 +392,22 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 opds[j] = operand_create_string(&(analizer->data[1]));
                 continue;
             }
+            else {
+                EntryData *ret;
+                ret = stable_find(alias_table, analizer->data);
+                if (ret != NULL && ret->opd->type == STRING) {
+                   // Match
+                   printf("\t\tIt's a label to a STRING!\n");
+                   opds[j] = operand_create_string(ret->opd->value.str);
+                   continue;
+                }
+            }
         }
         // i - analizer->i + 1
         set_error_msg("Invalid operand");
-        *errptr = s + i - analizer->i + 1;
+        printf("\tInvalid operand\n");
+        *errptr = s + (i - analizer->i + 1);
+        printf("analizer->i = %d\ni = %d\nerrptr = %p\ns = %p\n", analizer->i, i, *errptr, s);
         return 0;
     }
     if(strcmp(label, "n/a") != 0 && ispseudo(lineOp)) {

@@ -3,6 +3,7 @@
 #include "buffer.h"
 #include "stable.h"
 #include "asmtypes.h"
+#include "error.h"
 
 void printUsage() {
     printf("Usage: parse <file>\n");
@@ -44,12 +45,14 @@ int main(int argc, char *argv[]) {
         printf("ERROR: parse: Invalid file");
         return -1;
     }
+    set_prog_name("parse_test.c");
     line = buffer_create();
     bob = stable_create();
     while(read_line(f, line)) {
         lineNo++;
         printf("line = %s\n", line->data);
-        if(parse(line->data, bob, &instr, &errptr)) {
+        int parseResult = parse(line->data, bob, &instr, &errptr);
+        if(parseResult && instr != NULL) {
             instr->pos = ++count;
             instr->lineno = lineNo;
             printf("label = \"%s\"\n", instr->label);
@@ -74,7 +77,17 @@ int main(int argc, char *argv[]) {
             }
             instr = instr->next;
         }
+        else if (parseResult && instr == NULL) {
+            printf("\tBlank line\n");
+        }
         else {
+            //Some error ocurred: print error message
+            print_error_msg(NULL);
+            printf("\n%s", line->data);
+            printf("line = %p\nerrptr = %p\n", line+1, errptr);
+            for (int i = 0; line + i <= errptr; i++)
+                printf(" ");
+            printf("^\n");
             fclose(f);
             return 0;
         }
