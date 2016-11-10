@@ -10,13 +10,16 @@
 #include <ctype.h>
 
 
+int ispseudo(Operator op) {
+    return op.opcode < 0;
+}
+
 int parse(const char *s, SymbolTable alias_table, Instruction **instr, const char **errptr) {
     char *line, *label;
     Buffer *analizer;
     InsertionResult result;
     Instruction *finalInstr;
     int i, j, len;
-    Operand labelRef;
 
     line = estrdup(s);
     len = strlen(line);
@@ -126,8 +129,6 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 if(opNumber >= 0 && opNumber <= 255) {
                     // Match
                     opds[j] = operand_create_number(opNumber);
-                    labelRef.type = BYTE1;
-                    labelRef.value.num = opNumber;
                     continue;
                 }
             }
@@ -139,8 +140,6 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 if(opNumber >= 0 && opNumber <= 65535) {
                     // Match
                     opds[j] = operand_create_number(opNumber);
-                    labelRef.type = BYTE2;
-                    labelRef.value.num = opNumber;
                     continue;
                 }
             }
@@ -152,8 +151,6 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 if(opNumber >= 0 && opNumber <= 167772150) {
                     // Match
                     opds[j] = operand_create_number(opNumber);
-                    labelRef.type = BYTE3;
-                    labelRef.value.num = opNumber;
                     continue;
                 }
             }
@@ -165,8 +162,6 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 if(opNumber >= 0 && opNumber <= 4294967295) {
                     // Match
                     opds[j] = operand_create_number(opNumber);
-                    labelRef.type = TETRABYTE;
-                    labelRef.value.num = opNumber;
                     continue;
                 }
             }
@@ -199,7 +194,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                     octa opNumber = atoll(analizer->data);
                     if(opNumber <= 0 && opNumber >= -4294967295) {
                         // Match
-                        (*instr)->opds[j] = operand_create_number(opNumber);
+                        opds[j] = operand_create_number(opNumber);
                         continue;
                     }
                 }
@@ -218,7 +213,12 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         *errptr = s + i - analizer->i + 1;
         return 0;
     }
-    result.data =
+    if(strcmp(label, "n/a") != 0 && ispseudo(lineOp)) {
+        result.data->opd = opds[0];
+    }
+    else if(strcmp(label, "n/a") != 0) {
+        result.data->opd = operand_create_label(label);
+    }
     finalInstr = instr_create(label, word, opds);
     (*instr) = finalInstr;
     return 1;
