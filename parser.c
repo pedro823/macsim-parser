@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <ctype.h>
-
+#include <stdio.h>
 
 int ispseudo(Operator op) {
     return op.opcode < 0;
@@ -25,18 +25,26 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
     len = strlen(line);
     for(i = 0; i < len && line[i] <= 32; i++); // Takes off all preceding spaces
     analizer = buffer_create();
+    printf("parse:\n");
+    printf("\tInitialized all variables\n");
     if(line[i] == '*' || i >= len) {
         // Line is composed only by comment
         return 1;
     }
+    printf("\tLine has stuff\n");
     for(; line[i] > 32 && line[i] != ';' && line[i] != '*'; i++) {
         buffer_push_back(analizer, line[i]);
     }
+    printf("\tBuffer Read:\n\t\t%s\n", analizer->data);
     const Operator *word = optable_find(analizer->data);
+    printf("\tChecked for operator\n");
     if(word == NULL) {
         // First word is label
+        printf("\tFirst word is label\n");
+        printf("\tlabelcheck:\n");
         if(analizer->data[0] == '_' || isalpha(analizer->data[0])) {
             // Label is valid
+            printf("\t\tlabel[0] is valid\n");
             for(j = 1; j < analizer->i; j++) {
                 if(!(analizer->data[j] == '_') && !isalnum(analizer->data[j])) {
                     // Label is invalid
@@ -45,9 +53,12 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                     set_error_msg("Invalid label");
                     return 0;
                 }
+                printf("\t\tlabel[%d] is valid\n", j);
             }
             // Label is still valid -- insert it into stable
+            printf("\tlabel is valid. Inserting into stable...\n");
             result = stable_insert(alias_table, analizer->data);
+            printf("\tsuccess. result.new = %d\n", result.new);
             if(result.new == 0) {
                 // Label was already declared
                 // i - 1
@@ -56,6 +67,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 return 0;
             }
             label = estrdup(analizer->data);
+            printf("\tCopied analizer->data to label\n");
         }
         else {
             // Label is invalid
@@ -87,6 +99,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         }
     }
     else {
+        printf("\tFirst word isnt label\n");
         label = "n/a";
     }
     (*instr)->op = word;
