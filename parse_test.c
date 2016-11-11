@@ -81,7 +81,10 @@ int main(int argc, char *argv[]) {
             if(parseResult && instr != NULL) {
                 instr->pos = ++count;
                 instr->lineno = lineNo;
-                printf("label = \"%s\"\n", instr->label);
+                if(strcmp(instr->label, "n/a") == 0)
+                    printf("label = n/a\n");
+                else
+                    printf("label = \"%s\"\n", instr->label);
                 printf("operator = %s\n", instr->op->name);
                 printf("operands = ");
                 for(int i = 0; i < 3 && instr->opds[i]; i++) {
@@ -110,8 +113,7 @@ int main(int argc, char *argv[]) {
                 //Some error ocurred: print error message
                 print_error_msg(NULL);
                 printf("\n%s", line->data);
-                printf("line = %p\nerrptr = %p\n", line+1, errptr);
-                for (int i = 0; line + i <= errptr; i++)
+                for (int i = 0; p + i <= errptr; i++)
                     printf(" ");
                 printf("^\n");
                 fclose(f);
@@ -133,6 +135,7 @@ int main(int argc, char *argv[]) {
                         break;
                     }
                 }
+                p[i-ini] = 0;
             }
             else
                 break;

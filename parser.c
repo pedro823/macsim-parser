@@ -140,17 +140,23 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
             //printf("\tcomma checking\n\tline[i] = %c\n", line[i]);
             if(line[i] != ',') {
                 set_error_msg("Expected comma");
-                *errptr = s + i;
+                *errptr = s + i - 1;
                 return 0;
             }
             //consumes until another word again
-            for(i++; i < len && line[i] <= 32; i++);
+            for(i++; i < len && line[i] <= 32 && line[i] != '\n'; i++);
+            //printf("i = %d, len = %d\n", i, len);
+            //printf("line[i] = '%s'\n", line + i);
+        }
+        if (i >= len || line[i] == '*' || line[i] == ';' || line[i] == '\n') {
+            set_error_msg("Expected operand");
+            *errptr = s + i - 1;
+            return 0;
         }
         //consumes next word
         for(; i < len && line[i] > 32 && line[i] != '*' && line[i] != ';' && line[i] != ','; i++)
             buffer_push_back(analizer, line[i]);
         //printf("\tread operand: %s\n", analizer->data);
-
         int p = 0;
         if(type & BYTE1) {
             //printf("\tMATCH: BYTE1\n");
@@ -325,17 +331,19 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
             }
             else if(lineOp.opcode == EXTERN) {
                 //It's an EXTERN!
-                //printf("\t\tEXTERN: LABEL\n");
-                InsertionResult temp;
-                temp = stable_insert(alias_table, analizer->data);
-                if(temp.new == 1);
-                    //printf("\t\tInserted %s into stable\n", analizer->data);
-                else {
-                    set_error_msg("Declared label twice");
-                    *errptr = s + i;
-                    return 0;
+                //is it a valid label?
+                if(analizer->data[0] == '_' || isalpha(analizer->data[0])) {
+                    //TODO: check other letters
+                    InsertionResult temp;
+                    temp = stable_insert(alias_table, analizer->data);
+                    if(temp.new == 0) {
+                        set_error_msg("Declared label twice");
+                        *errptr = s + i;
+                        return 0;
+                    }
+                    opds[j] = operand_create_label(analizer->data);
+                    continue;
                 }
-                continue;
             }
         }
         if(type & REGISTER) {
@@ -440,6 +448,12 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         //printf("\tlabel is not null, command is ACTUAL\n");
         result.data->opd = operand_create_label(label);
         //printf("\tinserted new label into stable\n");
+    }
+    for(; i < len && line[i] <= 32; i++); //Consumes more spaces
+    if(i < len && line[i] != '*' && line[i] != ';') {
+        set_error_msg("Expected end of line");
+        *errptr = s + i - 1;
+        return 0;
     }
     finalInstr = instr_create(label, word, opds);
     (*instr) = finalInstr;
