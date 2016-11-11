@@ -115,6 +115,7 @@ InsertionResult stable_insert(SymbolTable table, const char *key) {
 		mem = malloc(256*sizeof(char));
 		strcpy(mem, key);
 		table->Table[pos].key = mem;
+		table->Table[pos].data.opd = NULL;
 		res->new = 1;
 		res->data = &(table->Table[pos].data);
 		(table->topo)++;
