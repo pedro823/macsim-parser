@@ -4,6 +4,7 @@
 #include "parser.h"
 #include "optable.h"
 #include "mactypes.h"
+#include "opcodes.h"
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -35,6 +36,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
     for(; line[i] > 32 && line[i] != ';' && line[i] != '*'; i++) {
         buffer_push_back(analizer, line[i]);
     }
+    analizer->data[analizer->i] = 0;
     //printf("\tBuffer Read:\n\t\t%s\n", analizer->data);
     const Operator *word = optable_find(analizer->data);
     //printf("\tChecked for operator\n");
@@ -70,7 +72,8 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 }
                 else {
                     //Label was declared in EXTERN
-                    result.data->opd = operand_create_label(label);
+                    //printf("\tLable already exists. Adding an operand to it\n");
+                    result.data->opd = operand_create_label(analizer->data);
                 }
             }
             label = estrdup(analizer->data);
@@ -105,6 +108,11 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
             // i - analizer->i + 1
             *errptr = s + i - analizer->i + 1;
             set_error_msg("Expected operator\n");
+            return 0;
+        }
+        else if (word->opcode == EXTERN && strcmp(label, "n/a")) {
+            set_error_msg("EXTERN operator can't have a label");
+            *errptr = s + i - analizer->i + 1;
             return 0;
         }
     }
@@ -156,6 +164,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         //consumes next word
         for(; i < len && line[i] > 32 && line[i] != '*' && line[i] != ';' && line[i] != ','; i++)
             buffer_push_back(analizer, line[i]);
+        //analizer->data[analizer->i] = 0;
         //printf("\tread operand: %s\n", analizer->data);
         int p = 0;
         if(type & BYTE1) {
@@ -320,32 +329,6 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 }
             }
         }
-        if(type & LABEL) {
-            //printf("\tMATCH: LABEL\n");
-            EntryData *ret;
-            ret = stable_find(alias_table, analizer->data);
-            if (ret != NULL) {
-                //printf("\t\tIt's a LABEL!\n");
-                opds[j] = operand_create_label(analizer->data);
-                continue;
-            }
-            else if(lineOp.opcode == EXTERN) {
-                //It's an EXTERN!
-                //is it a valid label?
-                if(analizer->data[0] == '_' || isalpha(analizer->data[0])) {
-                    //TODO: check other letters
-                    InsertionResult temp;
-                    temp = stable_insert(alias_table, analizer->data);
-                    if(temp.new == 0) {
-                        set_error_msg("Declared label twice");
-                        *errptr = s + i;
-                        return 0;
-                    }
-                    opds[j] = operand_create_label(analizer->data);
-                    continue;
-                }
-            }
-        }
         if(type & REGISTER) {
             //printf("\tMATCH: REGISTER\n");
             if (analizer->data[0] == '$') {
@@ -429,6 +412,43 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                    //printf("\t\tIt's a label to a STRING!\n");
                    opds[j] = operand_create_string(ret->opd->value.str);
                    continue;
+                }
+            }
+        }
+        if(type & LABEL) {
+            //printf("\tMATCH: LABEL\n");
+            EntryData *ret;
+            ret = stable_find(alias_table, analizer->data);
+            if (ret != NULL || (lineOp.opcode >= JMP && lineOp.opcode <= GETAB)) {
+                //printf("\t\tIt's a LABEL!\n");
+                opds[j] = operand_create_label(analizer->data);
+                continue;
+            }
+            else if(lineOp.opcode == EXTERN) {
+                //It's an EXTERN!
+                //is it a valid label?
+                if(analizer->data[0] == '_' || isalpha(analizer->data[0])) {
+                    //TODO: check other letters
+                    int reader = 0;
+                    while (reader < analizer->i && (analizer->data[reader] == '_' || isalnum(analizer->data[reader]))) {
+                        reader++;
+                    }
+                    if (reader >= analizer->i) {
+                        InsertionResult temp;
+                        temp = stable_insert(alias_table, analizer->data);
+                        if(temp.new == 0) {
+                            set_error_msg("Declared label twice");
+                            *errptr = s + i;
+                            return 0;
+                        }
+                        opds[j] = operand_create_label(analizer->data);
+                        continue;
+                    }
+                    else {
+                        set_error_msg("Invalid lable");
+                        *errptr = s + i;
+                        return 0;
+                    }
                 }
             }
         }

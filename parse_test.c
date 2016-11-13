@@ -11,6 +11,12 @@ void printUsage() {
     printf("Usage: parse <file>\n");
 }
 
+int printTable (const char *key, EntryData *data) {
+    printf("%s\n", key);
+    return 1;
+}
+
+
 char* decodeOperand(unsigned int optype) {
     switch (optype){
         case NUMBER_TYPE:
@@ -69,7 +75,7 @@ void addSpecialRegisters(SymbolTable table) {
 
 int main(int argc, char *argv[]) {
     FILE* f;
-    Buffer* line;
+    Buffer *line, *p;
     SymbolTable bob;
     Instruction *instr;
     int count = 0, lineNo = 0, i;
@@ -87,29 +93,27 @@ int main(int argc, char *argv[]) {
     }
     set_prog_name("parse_test.c");
     line = buffer_create();
+    p = buffer_create();
     bob = stable_create();
     addSpecialRegisters(bob);
     while(read_line(f, line)) {
-        char *p = malloc(strlen(line->data) * sizeof(char));
         lineNo++;
-        printf("line = ");
+        buffer_reset(p);
         for(i = 0; i < line->i; i++) {
             if(line->data[i] != ';') {
-                printf("%c", line->data[i]);
-                p[i] = line->data[i];
+                buffer_push_back(p, line->data[i]);
             }
             else {
                 i++;
-                printf("\n");
                 break;
             }
         }
-        int ini = 0;
         while(1) {
-            int parseResult = parse(p, bob, &instr, &errptr);
+            int parseResult = parse(p->data, bob, &instr, &errptr);
             if(parseResult && instr != NULL) {
                 instr->pos = ++count;
                 instr->lineno = lineNo;
+                printf("line = %s%c", p->data, "\n\0"[(p->data[p->i-1] == '\n')]);
                 if(strcmp(instr->label, "n/a") == 0)
                     printf("label = n/a\n");
                 else
@@ -135,36 +139,30 @@ int main(int argc, char *argv[]) {
                 }
                 instr = instr->next;
             }
-            else if (parseResult && instr == NULL) {
+            /*else if (parseResult && instr == NULL) {
                 printf("Blank line\n\n");
-            }
-            else {
+            }*/
+            else if (!parseResult){
                 //Some error ocurred: print error message
                 print_error_msg(NULL);
                 printf("\n%s", line->data);
-                for (int i = 0; p + i <= errptr; i++)
+                for (int i = 0; p->data + i <= errptr; i++)
                     printf(" ");
                 printf("^\n");
                 fclose(f);
                 return 0;
             }
             if(i < line->i) {
-                printf("line = ");
-                ini = i;
-                for(int a = 0; a < line->i; a++)
-                    p[a] = 0;
+                buffer_reset(p);
                 for(; i < line->i; i++) {
                     if(line->data[i] != ';') {
-                        printf("%c", line->data[i]);
-                        p[i-ini] = line->data[i];
+                        buffer_push_back(p, line->data[i]);
                     }
                     else {
                         i++;
-                        printf("\n");
                         break;
                     }
                 }
-                p[i-ini] = 0;
             }
             else
                 break;

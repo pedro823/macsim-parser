@@ -48,19 +48,14 @@ int buscaBin (SymbolTable table, const char *key) {
 
 void realloc_table (SymbolTable table) {
 	Entry *New;
-	int i, j;
+	int i;
 	New = emalloc(sizeof(Entry) * table->tmax * 2);
-	for (i = 0; i < 2*table->tmax; i++){
-		New[i].key = emalloc(256*sizeof(char));
-		for (j = 0; j < 255; j++)
-			New[i].key[j] = 0;
-	}
 	for (i = 0; i < table->tmax; i++){
 		New[i] = table->Table[i];
 	}
 	table->tmax *= 2;
 	for (; i < table->tmax; i++){
-		strcpy(New[i].key, "~~\0");
+		New[i].key = estrdup("~~\0");
 	}
 	free(table->Table);
 	table->Table = New;
@@ -74,8 +69,7 @@ SymbolTable stable_create() {
 	tabela->tmax = 20;
 	tabela->Table = emalloc(20 * sizeof(Entry));
 	for (int i = 0; i < tabela->tmax; i++){
-		tabela->Table[i].key = emalloc(256*sizeof(char));
-		strcpy(tabela->Table[i].key, "~~\0");
+		tabela->Table[i].key = estrdup("~~\0");
 	}
 	return tabela;
 }
@@ -104,7 +98,6 @@ void stable_destroy(SymbolTable table) {
 InsertionResult stable_insert(SymbolTable table, const char *key) {
 	InsertionResult *res = emalloc(sizeof(InsertionResult));
 	int pos = buscaBin(table, key);
-	char *mem;
 	if (strcmp(table->Table[pos].key, key)){
 		if (table->topo == (table->tmax)-1){
 			realloc_table(table);
@@ -112,9 +105,8 @@ InsertionResult stable_insert(SymbolTable table, const char *key) {
 		for (int i = table->topo; i > pos; i--){
 			table->Table[i] = table->Table[i-1];
 		}
-		mem = malloc(256*sizeof(char));
-		strcpy(mem, key);
-		table->Table[pos].key = mem;
+		//table->Table[pos] = emalloc(sizeof(Entry));
+		table->Table[pos].key = estrdup(key);
 		table->Table[pos].data.opd = NULL;
 		res->new = 1;
 		res->data = &(table->Table[pos].data);

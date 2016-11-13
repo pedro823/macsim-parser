@@ -1,13 +1,14 @@
-        EXTERN  loop
+        EXTERN  hey
 teste   IS      $1
-testei  IS      1; help IS  #3; ant IS rA
+testei  IS      13; help IS  #3; ant IS rA
 * so comentario
 test    STR     "HEY"
 tet     STR     test
         ADDU    $0, $0, testei
-        MUL     teste, $0, help
+        MUL     ant, $0, help
+        JN      $2, test
 
-loop    MUL     teste, teste, teste
+loop    MUL     ant, ant, help
         JMP     loop * comentario teste
 abc     JMP     loop
         GETA    ant, tet
