@@ -45,6 +45,19 @@ void specialcopy(char *newcopy, char *copyable, int begin) {
     printf("specialcopy read %d characters.\n", i);
 }
 
+int visit(const char *key, EntryData *data) {
+    if(data->opd == NULL) {
+        print_error_msg("error: label \"%s\" was never declared", key);
+
+        return 0;
+    }
+    return 1;
+}
+
+int verify(SymbolTable table) {
+    return stable_visit(table, visit);
+}
+
 void addSpecialRegisters(SymbolTable table) {
     InsertionResult result;
     result = stable_insert(table, "rA");
@@ -168,6 +181,7 @@ int main(int argc, char *argv[]) {
                 break;
         }
     }
+    verify(bob);
     fclose(f);
     return 0;
 }

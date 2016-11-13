@@ -1,4 +1,5 @@
-        EXTERN  hey
+        EXTERN  loop
+        EXTERN  lala
 teste   IS      $1
 testei  IS      13; help IS  #3; ant IS rA
 * so comentario
@@ -11,5 +12,3 @@ tet     STR     test
 loop    MUL     ant, ant, help
         JMP     loop * comentario teste
 abc     JMP     loop
-        GETA    ant, tet
-        RET     2
