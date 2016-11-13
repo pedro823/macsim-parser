@@ -13,4 +13,4 @@ parserdb: parser.o buffer.o asmtypes.o stable.o optable.o error.o parse_test.o
 	$(CC) $^ $(CFLAGDB) -c
 
 clean:
-	rm -f *.o *.gch parser
+	rm -f *.o *.gch parser parserdb

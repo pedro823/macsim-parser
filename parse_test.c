@@ -39,6 +39,34 @@ void specialcopy(char *newcopy, char *copyable, int begin) {
     printf("specialcopy read %d characters.\n", i);
 }
 
+void addSpecialRegisters(SymbolTable table) {
+    InsertionResult result;
+    result = stable_insert(table, "rA");
+    if(result.new) {
+        result.data->opd = operand_create_register(255);
+    }
+    result = stable_insert(table, "rR");
+    if(result.new) {
+        result.data->opd = operand_create_register(254);
+    }
+    result = stable_insert(table, "rSP");
+    if(result.new) {
+        result.data->opd = operand_create_register(253);
+    }
+    result = stable_insert(table, "rX");
+    if(result.new) {
+        result.data->opd = operand_create_register(252);
+    }
+    result = stable_insert(table, "rY");
+    if(result.new) {
+        result.data->opd = operand_create_register(251);
+    }
+    result = stable_insert(table, "rZ");
+    if(result.new) {
+        result.data->opd = operand_create_register(250);
+    }
+}
+
 int main(int argc, char *argv[]) {
     FILE* f;
     Buffer* line;
@@ -60,6 +88,7 @@ int main(int argc, char *argv[]) {
     set_prog_name("parse_test.c");
     line = buffer_create();
     bob = stable_create();
+    addSpecialRegisters(bob);
     while(read_line(f, line)) {
         char *p = malloc(strlen(line->data) * sizeof(char));
         lineNo++;
