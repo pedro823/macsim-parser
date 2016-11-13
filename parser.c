@@ -20,7 +20,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
     Buffer *analizer;
     InsertionResult result;
     Instruction *finalInstr;
-    int i, j, len;
+    int i, j, len, isExternLable = 0;
 
     line = estrdup(s);
     len = strlen(line);
@@ -72,6 +72,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 }
                 else {
                     //Label was declared in EXTERN
+                    isExternLable = 1;
                     //printf("\tLable already exists. Adding an operand to it\n");
                     result.data->opd = operand_create_label(analizer->data);
                 }
@@ -118,11 +119,23 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
     }
     else {
         //printf("\tFirst word isn't label\n");
-        //To do: Change to NULL
         label = "n/a";
     }
     //printf("\tStarted to check operands\n");
     Operator lineOp = (*word);
+    if (lineOp.opcode == IS) {
+        if (strcmp(label, "n/a") == 0) {
+            set_error_msg("IS operator requires a lable");
+            *errptr = s;
+            return 0;
+        }
+        if (isExternLable) {
+            set_error_msg("Alias is not a valid lable for EXTERN operator");
+            *errptr = s;
+            return 0;
+        }
+    }
+
     Operand **opds;
     opds = (Operand**) emalloc(3 * sizeof(Operand*));
     //printf("\tInitialized Operator and Operands\n");
@@ -197,6 +210,11 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                     EntryData *ret;
                     //printf("\tTrying to find %s at the stable...\n", analizer->data);
                     ret = stable_find(alias_table, analizer->data);
+                    if (strcmp(label, analizer->data) == 0) {
+                        set_error_msg("Line can't have the same lable and operand");
+                        *errptr = s + i;
+                        return 0;
+                    }
                     if (ret != NULL && ret->opd->type == NUMBER_TYPE) {
                        //printf("\tFound with success!\n");
                        if (ret->opd->value.num >= 0 && ret->opd->value.num <= 255) {
@@ -238,6 +256,11 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 else {
                     EntryData *ret;
                     ret = stable_find(alias_table, analizer->data);
+                    if (strcmp(label, analizer->data) == 0) {
+                        set_error_msg("Line can't have the same lable and operand");
+                        *errptr = s + i;
+                        return 0;
+                    }
                     if (ret != NULL && ret->opd->type == NUMBER_TYPE) {
                        if (ret->opd->value.num >= 0 && ret->opd->value.num <= 65535) {
                          // Match
@@ -278,6 +301,11 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 else {
                     EntryData *ret;
                     ret = stable_find(alias_table, analizer->data);
+                    if (strcmp(label, analizer->data) == 0) {
+                        set_error_msg("Line can't have the same lable and operand");
+                        *errptr = s + i;
+                        return 0;
+                    }
                     if (ret != NULL && ret->opd->type == NUMBER_TYPE) {
                        if (ret->opd->value.num >= 0 && ret->opd->value.num <= 167772150) {
                          // Match
@@ -318,6 +346,11 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 else {
                     EntryData *ret;
                     ret = stable_find(alias_table, analizer->data);
+                    if (strcmp(label, analizer->data) == 0) {
+                        set_error_msg("Line can't have the same lable and operand");
+                        *errptr = s + i;
+                        return 0;
+                    }
                     if (ret != NULL && ret->opd->type == NUMBER_TYPE) {
                        if (ret->opd->value.num >= 0 && ret->opd->value.num <= 4294967295) {
                          // Match
@@ -347,6 +380,11 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
             else {
                 EntryData *ret;
                 ret = stable_find(alias_table, analizer->data);
+                if (strcmp(label, analizer->data) == 0) {
+                    set_error_msg("Line can't have the same lable and operand");
+                    *errptr = s + i;
+                    return 0;
+                }
                 if (ret != NULL && ret->opd->type == REGISTER) {
                    // Match
                    //printf("\t\tIt's a label to a REGISTER!\n");
@@ -384,6 +422,11 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 else {
                     EntryData *ret;
                     ret = stable_find(alias_table, analizer->data);
+                    if (strcmp(label, analizer->data) == 0) {
+                        set_error_msg("Line can't have the same lable and operand");
+                        *errptr = s + i;
+                        return 0;
+                    }
                     if (ret != NULL && ret->opd->type == NUMBER_TYPE) {
                        if (ret->opd->value.num <= 0 && ret->opd->value.num >= -4294967295) {
                            // Match
@@ -407,6 +450,11 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
             else {
                 EntryData *ret;
                 ret = stable_find(alias_table, analizer->data);
+                if (strcmp(label, analizer->data) == 0) {
+                    set_error_msg("Line can't have the same lable and operand");
+                    *errptr = s + i;
+                    return 0;
+                }
                 if (ret != NULL && ret->opd->type == STRING) {
                    // Match
                    //printf("\t\tIt's a label to a STRING!\n");
@@ -419,6 +467,11 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
             //printf("\tMATCH: LABEL\n");
             EntryData *ret;
             ret = stable_find(alias_table, analizer->data);
+            if (strcmp(label, analizer->data) == 0) {
+                set_error_msg("Line can't have the same lable and operand");
+                *errptr = s + i;
+                return 0;
+            }
             if (ret != NULL || (lineOp.opcode >= JMP && lineOp.opcode <= GETAB)) {
                 //printf("\t\tIt's a LABEL!\n");
                 opds[j] = operand_create_label(analizer->data);

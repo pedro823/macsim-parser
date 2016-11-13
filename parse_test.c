@@ -16,7 +16,6 @@ int printTable (const char *key, EntryData *data) {
     return 1;
 }
 
-
 char* decodeOperand(unsigned int optype) {
     switch (optype){
         case NUMBER_TYPE:
@@ -48,7 +47,6 @@ void specialcopy(char *newcopy, char *copyable, int begin) {
 int visit(const char *key, EntryData *data) {
     if(data->opd == NULL) {
         print_error_msg("error: label \"%s\" was never declared", key);
-
         return 0;
     }
     return 1;
@@ -126,6 +124,7 @@ int main(int argc, char *argv[]) {
             if(parseResult && instr != NULL) {
                 instr->pos = ++count;
                 instr->lineno = lineNo;
+                //stable_visit(bob, printTable);
                 printf("line = %s%c", p->data, "\n\0"[(p->data[p->i-1] == '\n')]);
                 if(strcmp(instr->label, "n/a") == 0)
                     printf("label = n/a\n");
@@ -162,6 +161,9 @@ int main(int argc, char *argv[]) {
                 for (int i = 0; p->data + i <= errptr; i++)
                     printf(" ");
                 printf("^\n");
+                buffer_destroy(p);
+                buffer_destroy(line);
+                stable_destroy(bob);
                 fclose(f);
                 return 0;
             }
@@ -182,6 +184,9 @@ int main(int argc, char *argv[]) {
         }
     }
     verify(bob);
+    buffer_destroy(p);
+    buffer_destroy(line);
+    stable_destroy(bob);
     fclose(f);
     return 0;
 }
