@@ -1,0 +1,5 @@
+Padrão a ser mantido:
+
+__<nome da função>__
+<codigo de máquina>
+JMP <nome da função>
