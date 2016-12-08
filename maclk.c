@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "buffer.h"
+#include "taglist.h"
 #include <string.h>
 
 void printUsage(char* name) {
@@ -23,7 +24,7 @@ char* itoh(int num) {
     i = 0;
     while(num) {
         ret[i++] = n % 16 + '0';
-        num <<= 4;
+        num >>= 4;
     }
     return ret;
 }
@@ -87,6 +88,7 @@ int correctJump(FILE* outfile, char* outfileName, char* jumpName, int line) {
                     fprintf(outfile, "48");
                 }
                 char toPrint[6] = itoh(diff);
+                // Pula para a linha correta
                 fprintf(outfile, "%s\n", toPrint);
             }
             findLine++;
@@ -117,11 +119,16 @@ int main(int argc, char **argv) {
     }
     //Deixa um JMPTOMAIN temporário
     fprintf(outfile, "JMPTOMAIN  \n");
+    int line = 1, aux;
     for(int i = 0; i < noFiles; i++) {
         while(read_line(files[i], b) != 0) {
             if(isTag(b->data)) {
-                
+                // guarda todas as tags em um buffer
             }
+            else {
+            }
+            fprintf(outfile, "%s", b->data);
+            line++;
         }
     }
     fclose(outfile);
