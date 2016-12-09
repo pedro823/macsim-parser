@@ -2,17 +2,17 @@
 #define __TAGLIST_H__
 
 // Lista ligada de tags a se corrigir
-typedef struct b_s {
-    char* tagname;
+typedef struct t_s {
+    char* tagName;
     int linePos;
-    struct b_s* next;
+    struct t_s* next;
 } Tag;
 
 typedef Tag* _Tag;
 
 _Tag tag_create();
 
-void tag_insert(_Tag* head);
+void tag_insert(_Tag* head, char* jumpName, int linePos);
 
 void tag_destroy(_Tag head);
 
