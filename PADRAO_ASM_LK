@@ -3,3 +3,19 @@ Padrão a ser mantido:
 __<nome da função>__
 <codigo de máquina>
 JMP <nome da função>
+
+
+CALL    k:
+GETA    rZ,4
+STOUI   rZ,rSP,0
+ADDUI   rSP,rSP,8
+JMP[B]  k
+
+PUSH    $X:
+STOUI   $X,rSP,0
+ADDUI   rSP,rSP,8
+
+RET     k:
+SUBU    rSP,rSP,(k+1)*8
+LDOU    rZ,rSP,k*8
+GO      rZ,0
