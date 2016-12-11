@@ -58,21 +58,24 @@ int correctJump(FILE* outfile, char* outfileName, char* jumpName, int line) {
     fpos_t last;
     fgetpos(outfile, &last);
     fflush(outfile);
-    Buffer aux = buffer_create();
     fseek(outfile, 0, SEEK_SET);
+    Buffer aux = buffer_create();
     if(strcmp(jumpName, "main")) {
-        read_line(outfile, aux)
+        read_line(outfile, aux);
         if(strcmp(aux->data, "JMPTOMAIN  \n" != 0)) {
             buffer_destroy(aux);
             return -1;
         }
-        fsetpos(outfile, -aux->i, SEEK_CUR)
+        fsetpos(outfile, -aux->i, SEEK_CUR);
         fprintf(outfile, "48");
         char n[6] = itoh(line);
         fprintf(outfile, "%s\n", n);
     }
     else {
+        // Inseguro -- buffer overflow possível
         char jumpFind[300];
+        //
+
         int findLine = 0;
         sprintf(jumpFind, "JMP %s\n", jumpName);
         while(read_line(outfile, aux)) {
@@ -114,6 +117,7 @@ int main(int argc, char **argv) {
     Buffer *b = buffer_create();
     FILE* outfile = fopen(argv[1], "w+"); // Cria a Outfile
     FILE** files = malloc(noFiles * sizeof(FILE*));
+    _Tag tlist = tag_create();
     for(int i = 0; i < noFiles; i++) {
         files[i] = fopen(argv[i + 2]);
     }
@@ -123,16 +127,32 @@ int main(int argc, char **argv) {
     for(int i = 0; i < noFiles; i++) {
         while(read_line(files[i], b) != 0) {
             if(isTag(b->data)) {
-                // guarda todas as tags em um buffer
+                // guarda todas as tags em uma lista ligada
+                char* temp = b->data + 2; // Tira o __ do começo da tag
+                tag_insert(&tlist, temp, line);
             }
             else {
+                // Tags devem ser invisíveis
+                fprintf(outfile, "%s", b->data);
+                line++;
             }
-            fprintf(outfile, "%s", b->data);
-            line++;
+        }
+    }
+    for(_Tag i = tlist, i != NULL; i = i->next) {
+        if((aux = correctJump(outfile, argv[1], i->tagName, i->linePos) < 0) {
+            // Erro em correctJump
+            printError(argv[0], -aux);
+            fclose(outfile);
+            tag_destroy(tlist);
+            for(int j = 0; j < noFiles, j++) {
+                fclose(files[j]);
+            }
+            return -1;
         }
     }
     fclose(outfile);
-    for(i = 0; i < noFiles; i++) {
+    tag_destroy(tlist);
+    for(int i = 0; i < noFiles; i++) {
         fclose(files[i]);
     }
     return 0;
