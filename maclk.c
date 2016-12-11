@@ -62,10 +62,18 @@ void printError(char* name, int error) {
             // checagem final de se não há nenhuma referência
             // faltando.
             fprintf(stderr, "ERROR: %s: Undefined reference to ", name);
+            break;
 
         case 3:
             // Main nunca foi definida!
             fprintf(stderr, "ERROR: %s: main was not defined.\n", name);
+            break;
+
+        case 4:
+            // Invalid file!
+            fprintf(stderr, "ERROR: %s: Invalid file specified: ", name);
+            break;
+
         default:
             fprintf(stderr, "ERROR: %s: Unknown error.\n", name);
     }
@@ -113,7 +121,6 @@ int correctJump(FILE* outfile, char* outfileName, char* jumpName, int line) {
                 // Pula para a linha correta
                 fprintf(outfile, "%-300s\n", toPrint);
             }
-            fprintf(stderr, "aux returned %d on line %d\n", tmp2, findLine);
             findLine++;
         }
     }
@@ -140,6 +147,11 @@ int main(int argc, char **argv) {
     _Tag tlist = tag_create();
     for(int i = 0; i < noFiles; i++) {
         files[i] = fopen(argv[i + 2], "r");
+        if(files[i] == NULL) {
+            printError(argv[0], 4);
+            fprintf(stderr, "%s\n", argv[i + 2]);
+            return 0;
+        }
     }
     //Deixa um JMPTOMAIN temporário
     fprintf(outfile, "JMPTOMAIN  \n");
@@ -148,7 +160,7 @@ int main(int argc, char **argv) {
         while(read_line(files[i], b) != 0) {
             if(isTag(b->data)) {
                 // guarda todas as tags em uma lista ligada
-                char* temp = format(b->data); // Tira o __ do começo da tag
+                char* temp = format(b->data); // Formata a tag
                 tag_insert(&tlist, temp, line);
             }
             else {
@@ -166,6 +178,19 @@ int main(int argc, char **argv) {
             tag_destroy(tlist);
             for(int j = 0; j < noFiles; j++) {
                 fclose(files[j]);
+            }
+            return -1;
+        }
+    }
+    rewind(outfile);
+    while(read_line(outfile, b) != 0) {
+        if(isJump(b->data)) {
+            printError(argv[0], 2);
+            fprintf(stderr, "%s", b->data + 4);
+            fclose(outfile);
+            tag_destroy(tlist);
+            for(int i = 0; i < noFiles; i++) {
+                fclose(files[i]);
             }
             return -1;
         }
