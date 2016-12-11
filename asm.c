@@ -183,11 +183,11 @@ int assemble(const char* filename, FILE* input, FILE* output) {
                 if (data == NULL)
                     fprintf(output, "JMP %s\n", instPtr->opds[0]->value.str);
                 else
-                    fprintf(output, "%x%02x0000\n", (instPtr->pos < data->i)? 0x48 : 0x49, abs(instPtr->pos - data->i));
+                    fprintf(output, "%x%06lx\n", (instPtr->pos < data->i)? 0x48 : 0x49, abs(instPtr->pos - data->i));
             }
             else if (instPtr->opds[0]->type == NUMBER_TYPE) {
                 if (instPtr->lineno + instPtr->opds[0]->value.num <= lineNo && instPtr->lineno + instPtr->opds[0]->value.num > 0)
-                    fprintf(output, "%x%02x0000\n", (instPtr->opds[0]->value.num > 0)? 0x48 : 0x49, abs(instPtr->opds[0]->value.num));
+                    fprintf(output, "%x%06lx\n", (instPtr->opds[0]->value.num > 0)? 0x48 : 0x49, abs(instPtr->opds[0]->value.num));
                 else {
                     //O destino do JMP passa da quantidade de linhas do código,
                     //ou é negativo
@@ -205,11 +205,11 @@ int assemble(const char* filename, FILE* input, FILE* output) {
                     return 0;
                 }
                 else
-                    fprintf(output, "%x%02lx%02lx00\n", instPtr->op->opcode + ((instPtr->pos < data->i)? 0 : 1), instPtr->opds[0]->value.num, abs(instPtr->pos - data->i));
+                    fprintf(output, "%x%02lx%04lx\n", instPtr->op->opcode + ((instPtr->pos < data->i)? 0 : 1), instPtr->opds[0]->value.num, abs(instPtr->pos - data->i));
             }
             else if (instPtr->opds[1]->type == NUMBER_TYPE) {
                 if (instPtr->pos + instPtr->opds[1]->value.num <= count && instPtr->pos + instPtr->opds[1]->value.num > 0)
-                    fprintf(output, "%x%02lx%02lx00\n", instPtr->op->opcode + ((instPtr->pos < data->i)? 0 : 1), instPtr->opds[0]->value.num, abs(instPtr->opds[1]->value.num));
+                    fprintf(output, "%x%02lx%04lx\n", instPtr->op->opcode + ((instPtr->pos < data->i)? 0 : 1), instPtr->opds[0]->value.num, abs(instPtr->opds[1]->value.num));
                 else {
                     //O destino do JMP passa da quantidade de linhas do código,
                     //ou é negativo
@@ -249,18 +249,18 @@ int assemble(const char* filename, FILE* input, FILE* output) {
                     fprintf(output, "\n");
                 break;
                 case CALL:
-                    fprintf(output, "58fa0400\n");
+                    fprintf(output, "58fa0004\n");
                     fprintf(output, "1ffafd00\n");
                     fprintf(output, "31fdfd08\n");
                     data = stable_find(label_table, instPtr->opds[0]->value.str);
                     if (data == NULL)
                         fprintf(output, "JMP %s\n", instPtr->opds[0]->value.str);
                     else
-                        fprintf(output, "%x%02x0000\n", (instPtr->pos < data->i)? 0x48 : 0x49, abs(instPtr->pos - data->i) + ((instPtr->pos < data->i)? 0 : 3));
+                        fprintf(output, "%x%06lx\n", (instPtr->pos < data->i)? 0x48 : 0x49, abs(instPtr->pos - data->i) + ((instPtr->pos < data->i)? 0 : 3));
                 break;
                 case RET:
                     fprintf(output, "18fdfd%02lx\n", (instPtr->opds[0]->value.num + 1)*8);
-                    fprintf(output, "0efafd%02lx\n", instPtr->opds[0]->value.num * 8);
+                    fprintf(output, "0ffafd%02lx\n", instPtr->opds[0]->value.num * 8);
                     fprintf(output, "56fa0000\n");
                 break;
                 case PUSH:
@@ -270,14 +270,19 @@ int assemble(const char* filename, FILE* input, FILE* output) {
             }
         }
         else if (instPtr->op->opcode < JMP){
-            //Cuida de todos os registradores que tem uma versão imediata
+            //Cuida de todos os operadores que tem uma versão imediata
             if (instPtr->opds[2]->type == REGISTER)
                 fprintf(output, "%02x%02lx%02lx%02lx\n", instPtr->op->opcode, instPtr->opds[0]->value.num, instPtr->opds[1]->value.num, instPtr->opds[2]->value.num);
             else
                 fprintf(output, "%02x%02lx%02lx%02lx\n", instPtr->op->opcode+1, instPtr->opds[0]->value.num, instPtr->opds[1]->value.num, instPtr->opds[2]->value.num);
         }
+        else if (instPtr->op->opcode == SETW) {
+            fprintf(output, "5a%02lx%04lx", instPtr->opds[0]->value.num, instPtr->opds[1]->value.num);
+        }
+        else if (instPtr->op->opcode == INT){
+            fprintf(output, "fe%06lx", instPtr->opds[0]->value.num);
+        }
         else {
-            //Cuida dos outros registradores
             fprintf(output, "%02x", instPtr->op->opcode);
             for (int i = 0; i < 2; i++)
                 if (instPtr->op->opd_types[i] != OP_NONE)

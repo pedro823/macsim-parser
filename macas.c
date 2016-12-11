@@ -23,9 +23,13 @@ int main (int argc, const char **argv) {
     strcpy(&(outName[i]), ".maco\0");
     in = fopen(argv[1], "r");
     out = fopen(outName, "w+");
-    if (in == NULL)
+    if (in == NULL) {
         fprintf(stderr, "ERROR: Cannot find %s\n", argv[1]);
+        fclose(out);
+        return 0;
+    }
     assemble(argv[1], in, out);
     fclose(in);
     fclose(out);
+    return 0;
 }
