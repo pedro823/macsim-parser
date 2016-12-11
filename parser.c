@@ -15,6 +15,10 @@ int ispseudo(Operator op) {
     return op.opcode < 0;
 }
 
+int isHexa(const char c) {
+    return (isdigit(c) || c >= 'a' || c <= 'f' || c >= 'A' || c <= 'F');
+}
+
 int parse(const char *s, SymbolTable alias_table, Instruction **instr, const char **errptr) {
     char *line, *label;
     Buffer *analizer;
@@ -183,7 +187,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         if(type & BYTE1) {
             //printf("\tMATCH: BYTE1\n");
             if (analizer->data[0] == '#') {
-                for (p = 1; p < analizer->i && isdigit(analizer->data[p]); p++);
+                for (p = 1; p < analizer->i && isHexa(analizer->data[p]); p++);
                 if(p == analizer->i) {
                     char *pt;
                     int opNumber = strtol(analizer->data + 1, &pt, 16);
@@ -230,7 +234,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         if(type & BYTE2) {
             //printf("\tMATCH: BYTE2\n");
             if (analizer->data[0] == '#') {
-                for (p = 1; p < analizer->i && isdigit(analizer->data[p]); p++);
+                for (p = 1; p < analizer->i && isHexa(analizer->data[p]); p++);
                 if(p == analizer->i) {
                     char *pt;
                     int opNumber = strtol(analizer->data + 1, &pt, 16);
@@ -275,7 +279,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         if(type & BYTE3) {
             //printf("\tMATCH: BYTE3\n");
             if (analizer->data[0] == '#') {
-                for (p = 1; p < analizer->i && isdigit(analizer->data[p]); p++);
+                for (p = 1; p < analizer->i && isHexa(analizer->data[p]); p++);
                 if(p == analizer->i) {
                     char *pt;
                     int opNumber = strtol(analizer->data + 1, &pt, 16);
@@ -320,7 +324,7 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
         if(type & TETRABYTE) {
             //printf("\tMATCH: TETRABYTE\n");
             if (analizer->data[0] == '#') {
-                for (p = 1; p < analizer->i && isdigit(analizer->data[p]); p++);
+                for (p = 1; p < analizer->i && isHexa(analizer->data[p]); p++);
                 if(p == analizer->i) {
                     char *pt;
                     uocta opNumber = strtol(analizer->data + 1, &pt, 16);
