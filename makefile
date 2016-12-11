@@ -10,12 +10,7 @@ macas: macas.o asm.o error.o parser.o buffer.o stable.o asmtypes.o optable.o
 
 maclk: maclk.o taglist.o buffer.o error.o
 	$(CC) $^ -o $@
-
-parser: parser.o buffer.o asmtypes.o stable.o optable.o error.o parse_test.o
-	$(CC) $^ -o $@
-
-parserdb: parser.o buffer.o asmtypes.o stable.o optable.o error.o parse_test.o
-	$(CC) $^ -o $@
+	rm -f *.o *.gch
 
 %.o: %.c
 	$(CC) $^ $(CFLAGDB) -c
