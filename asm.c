@@ -277,14 +277,14 @@ int assemble(const char* filename, FILE* input, FILE* output) {
                 fprintf(output, "%02x%02lx%02lx%02lx\n", instPtr->op->opcode+1, instPtr->opds[0]->value.num, instPtr->opds[1]->value.num, instPtr->opds[2]->value.num);
         }
         else if (instPtr->op->opcode == SETW) {
-            fprintf(output, "5a%02lx%04lx", instPtr->opds[0]->value.num, instPtr->opds[1]->value.num);
+            fprintf(output, "5a%02lx%04lx\n", instPtr->opds[0]->value.num, instPtr->opds[1]->value.num);
         }
         else if (instPtr->op->opcode == INT){
-            fprintf(output, "fe%06lx", instPtr->opds[0]->value.num);
+            fprintf(output, "fe%06lx\n", instPtr->opds[0]->value.num);
         }
         else {
             fprintf(output, "%02x", instPtr->op->opcode);
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < 3; i++)
                 if (instPtr->op->opd_types[i] != OP_NONE)
                     fprintf(output, "%02lx", instPtr->opds[i]->value.num);
                 else
