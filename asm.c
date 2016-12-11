@@ -11,31 +11,11 @@
 #include "opcodes.h"
 #include "asm.h"
 
-void specialcopy(char *newcopy, char *copyable, int begin) {
-    int i;
-    for(i = 0; i < strlen(copyable); i++) {
-        newcopy[i] = copyable[begin + i];
-        if(newcopy[i] == ';')
-            break;
-    }
-}
-
-int visit(const char *key, EntryData *data) {
-    if(data->opd == NULL) {
-        print_error_msg("error: label \"%s\" was never declared", key);
-        return 0;
-    }
-    return 1;
-}
-
-int verify(SymbolTable table) {
-    return stable_visit(table, visit);
-}
-
 int ispseudo2(const Operator *op) {
     return op->opcode < 0;
 }
 
+//Adiciona registradores especiais à alias_table
 void addSpecialRegisters(SymbolTable table) {
     InsertionResult result;
     result = stable_insert(table, "rA");
@@ -84,6 +64,7 @@ int assemble(const char* filename, FILE* input, FILE* output) {
     while(read_line(input, line)) {
         lineNo++;
         buffer_reset(p);
+        //Coloca a linha no buffer até achar ";" ou até a linha terminar
         for(i = 0; i < line->i; i++) {
             if(line->data[i] != ';') {
                 buffer_push_back(p, line->data[i]);
@@ -96,19 +77,19 @@ int assemble(const char* filename, FILE* input, FILE* output) {
         while(1) {
             int parseResult = parse(p->data, alias_table, instr, &errptr);
             if (parseResult && *instr != NULL) {
+                //Se o operador for um EXTERN, adiciona o operando na extern_table
                 if ((*instr)->op->opcode == EXTERN && strcmp((*instr)->opds[0]->value.str, "n/a")) {
-                    printf("Inserting %s at extern_table\n", (*instr)->opds[0]->value.str);
                     result = stable_insert(extern_table, (*instr)->opds[0]->value.str);
                     if (result.new == 0) {
-                        //EXTERN lable defined two times
-                        print_error_msg("EXTERN label \"%s\" defined twice\n", (*instr)->opds[0]->value.str);
+                        //Há dois EXTERNs com a mesma label
+                        print_error_msg("EXTERN label \"%s\" defined twice", (*instr)->opds[0]->value.str);
                         for (; isspace(p->data[ptr]); ptr++);
                         for (; isalpha(p->data[ptr]); ptr++);
                         for (; isspace(p->data[ptr]); ptr++);
-                        printf("\n%s", line->data);
+                        fprintf(stderr, "\n%s", line->data);
                         for (int i = 0; i < ptr; i++)
-                            printf(" ");
-                        printf("^\n");
+                            fprintf(stderr, " ");
+                        fprintf(stderr, "^\n");
                         buffer_destroy(p);
                         buffer_destroy(line);
                         stable_destroy(alias_table);
@@ -116,20 +97,19 @@ int assemble(const char* filename, FILE* input, FILE* output) {
                         stable_destroy(extern_table);
                         return 0;
                     }
-                    printf("Setting it to zero\n");
                     result.data->i = 0;
                 }
+                //Se a instrução tiver uma label, adiciona na label_table
                 else if ((*instr)->op->opcode != IS && strcmp((*instr)->label, "n/a")) {
                     result = stable_insert(label_table, (*instr)->label);
-                    printf("Inserting %s at label_table\n", (*instr)->label);
                     if (result.new == 0) {
-                        //lable defined two times
-                        print_error_msg("Label \"%s\" defined twice\n", (*instr)->label);
+                        //A mesma label foi definida duas vezes
+                        print_error_msg("Label \"%s\" defined twice", (*instr)->label);
                         for (; isspace(p->data[ptr]); ptr++);
-                        printf("\n%s", line->data);
+                        fprintf(stderr, "\n%s", line->data);
                         for (int i = 0; i < ptr; i++)
-                            printf(" ");
-                        printf("^\n");
+                            fprintf(stderr, " ");
+                        fprintf(stderr, "^\n");
                         buffer_destroy(p);
                         buffer_destroy(line);
                         stable_destroy(alias_table);
@@ -137,46 +117,20 @@ int assemble(const char* filename, FILE* input, FILE* output) {
                         stable_destroy(extern_table);
                         return 0;
                     }
-                    result.data->i = (*instr)->pos;
-                    printf("Setting it to %d\n", (*instr)->pos);
+                    //Se a label foi definida em um EXTERN, sinaliza para a
+                    //extern_table que ela foi achada
+                    result.data->i = count + 1;
                     if (stable_find(extern_table, (*instr)->label) != NULL) {
                         result = stable_insert(extern_table, (*instr)->label);
                         result.data->i = 1;
-                        printf("Setting %s to one\n", (*instr)->label);
                     }
                 }
-                //stable_visit(alias_table, printTable);
-                /*
-                printf("line = %s%c", p->data, "\n\0"[(p->data[p->i-1] == '\n')]);
-                if(strcmp(instr->label, "n/a") == 0)
-                    printf("label = n/a\n");
-                else
-                    printf("label = \"%s\"\n", instr->label);
-                printf("operator = %s\n", instr->op->name);
-                printf("operands = ");
-                for(int i = 0; i < 3 && instr->opds[i]; i++) {
-                    type = decodeOperand(instr->opds[i]->type);
-                    if(instr->opds[i]->type == NUMBER_TYPE)
-                        printf("%s(%lld)", type, instr->opds[i]->value.num);
-                    else if(instr->opds[i]->type == REGISTER)
-                        printf("%s(%d)", type, instr->opds[i]->value.reg);
-                    else if(instr->opds[i]->type == LABEL)
-                        printf("%s(%s)", type, instr->opds[i]->value.label);
-                    else
-                        printf("%s(%s)", type, instr->opds[i]->value.str);
-                    if(i < 2 && !(instr->opds[i + 1]))
-                        printf("\n\n");
-                    else if(i == 2)
-                        printf("\n\n");
-                    else
-                        printf(", ");
-                }
-                */
                 (*instr)->pos = ++count;
                 (*instr)->lineno = lineNo;
+                //Se o operador for um pseudo-operador, pula mais linhas
                 switch ((*instr)->op->opcode) {
                     case STR:
-                        count += strlen((*instr)->opds[0]->value.str)/4 - 1;
+                        count += (strlen((*instr)->opds[0]->value.str) - 1)/4;
                         break;
                     case CALL:
                         count += 3;
@@ -190,16 +144,13 @@ int assemble(const char* filename, FILE* input, FILE* output) {
                 }
                 instr = &((*instr)->next);
             }
-            /*else if (parseResult && instr == NULL) {
-                printf("Blank line\n\n");
-            }*/
             else if (!parseResult){
-                //Some error ocurred: print error message
+                //Ocorreu algum erro, printa uma mensagem de erro
                 print_error_msg(NULL);
-                printf("\n%s", line->data);
+                fprintf(stderr, "\n%s", line->data);
                 for (int i = 0; p->data + i <= errptr; i++)
-                    printf(" ");
-                printf("^\n");
+                    fprintf(stderr, " ");
+                fprintf(stderr, "^\n");
                 buffer_destroy(p);
                 buffer_destroy(line);
                 stable_destroy(alias_table);
@@ -207,7 +158,8 @@ int assemble(const char* filename, FILE* input, FILE* output) {
                 stable_destroy(extern_table);
                 return 0;
             }
-            if(i < line->i) {
+            if (i < line->i) {
+                //Lê a próxima instrução se há mais de uma instrução na linha
                 buffer_reset(p);
                 for(; i < line->i; i++) {
                     if(line->data[i] != ';') {
@@ -223,11 +175,10 @@ int assemble(const char* filename, FILE* input, FILE* output) {
                 break;
         }
     }
-    printf("HEY\n");
-    printf("NULL\n");
+    //Imprime a lista de instruções como código de máquina
     for (instPtr = instVec; instPtr != NULL; instPtr = instPtr->next) {
         if (instPtr->op->opcode == JMP) {
-            if (instPtr->opds[0]->type == STRING) {
+            if (instPtr->opds[0]->type == LABEL) {
                 data = stable_find(label_table, instPtr->opds[0]->value.str);
                 if (data == NULL)
                     fprintf(output, "JMP %s\n", instPtr->opds[0]->value.str);
@@ -238,41 +189,47 @@ int assemble(const char* filename, FILE* input, FILE* output) {
                 if (instPtr->lineno + instPtr->opds[0]->value.num <= lineNo && instPtr->lineno + instPtr->opds[0]->value.num > 0)
                     fprintf(output, "%x%02x0000\n", (instPtr->opds[0]->value.num > 0)? 0x48 : 0x49, abs(instPtr->opds[0]->value.num));
                 else {
-                    //ERRO
-                    fprintf(stderr, "Jumping out of the code\n");
+                    //O destino do JMP passa da quantidade de linhas do código,
+                    //ou é negativo
+                    print_error_msg("Jump destiny is not in the code");
+                    return 0;
                 }
             }
         }
         else if (instPtr->op->opcode > JMP && instPtr->op->opcode <= GETAB) {
-            if (instPtr->opds[1]->type == STRING) {
+            if (instPtr->opds[1]->type == LABEL) {
                 data = stable_find(label_table, instPtr->opds[1]->value.str);
                 if (data == NULL) {
-                    //ERRO (acho)
-                    fprintf(stderr, "Cannot find %s label\n", instPtr->opds[1]->value.str);
+                    //Não sei se isso é um erro
+                    print_error_msg("Cannot find \"%s\" label", instPtr->opds[1]->value.str);
+                    return 0;
                 }
                 else
-                    fprintf(output, "%x%02x0000\n", instPtr->op->opcode + ((instPtr->pos < data->i)? 0 : 1), abs(instPtr->pos - data->i));
+                    fprintf(output, "%x%02lx%02lx00\n", instPtr->op->opcode + ((instPtr->pos < data->i)? 0 : 1), instPtr->opds[0]->value.num, abs(instPtr->pos - data->i));
             }
             else if (instPtr->opds[1]->type == NUMBER_TYPE) {
                 if (instPtr->pos + instPtr->opds[1]->value.num <= count && instPtr->pos + instPtr->opds[1]->value.num > 0)
-                    fprintf(output, "%x%02x0000\n", instPtr->op->opcode + ((instPtr->pos < data->i)? 0 : 1), abs(instPtr->opds[0]->value.num));
+                    fprintf(output, "%x%02lx%02lx00\n", instPtr->op->opcode + ((instPtr->pos < data->i)? 0 : 1), instPtr->opds[0]->value.num, abs(instPtr->opds[1]->value.num));
                 else {
-                    //ERRO
-                    fprintf(stderr, "Jumping out of the code\n");
+                    //O destino do JMP passa da quantidade de linhas do código,
+                    //ou é negativo
+                    print_error_msg("Jump destiny is not in the code");
+                    return 0;
                 }
             }
         }
         else if (instPtr->op->opcode == EXTERN) {
-            printf("Trying to find %s at extern table\n", instPtr->opds[0]->value.str);
             data = stable_find(extern_table, instPtr->opds[0]->value.str);
             if (data->i == 0) {
-                //EXTERN label not defined
-                fprintf(stderr, "Label %s wasn't defined\n", instPtr->opds[0]->value.str);
+                //A label de um EXTERN não foi definida em nenhum lugar
+                print_error_msg("EXTERN label \"%s\" wasn't defined", instPtr->opds[0]->value.str);
+                return 0;
             }
             else
                 fprintf(output, "__%s__\n", instPtr->opds[0]->value.str);
         }
         else if (ispseudo2(instPtr->op)) {
+            //Transforma os pseudo-operadores em vários códigos de máquina
             switch (instPtr->op->opcode) {
                 case TETRA:
                     fprintf(output, "%08lx\n", instPtr->opds[0]->value.num);
@@ -280,7 +237,7 @@ int assemble(const char* filename, FILE* input, FILE* output) {
                 case STR:
                     cptr = instPtr->opds[0]->value.str;
                     len = strlen(instPtr->opds[0]->value.str);
-                    for (int i = 0; i < len; i++) {
+                    for (int i = 0; i < len; i++, cptr = cptr+1) {
                         fprintf(output, "%02x", *cptr);
                         if ((i+1)%4 == 0)
                             fprintf(output, "\n");
@@ -299,7 +256,7 @@ int assemble(const char* filename, FILE* input, FILE* output) {
                     if (data == NULL)
                         fprintf(output, "JMP %s\n", instPtr->opds[0]->value.str);
                     else
-                        fprintf(output, "%x%02x0000\n", (instPtr->pos < data->i)? 0x48 : 0x49, abs(instPtr->pos - data->i));
+                        fprintf(output, "%x%02x0000\n", (instPtr->pos < data->i)? 0x48 : 0x49, abs(instPtr->pos - data->i) + ((instPtr->pos < data->i)? 0 : 3));
                 break;
                 case RET:
                     fprintf(output, "18fdfd%02lx\n", (instPtr->opds[0]->value.num + 1)*8);
@@ -313,12 +270,14 @@ int assemble(const char* filename, FILE* input, FILE* output) {
             }
         }
         else if (instPtr->op->opcode < JMP){
+            //Cuida de todos os registradores que tem uma versão imediata
             if (instPtr->opds[2]->type == REGISTER)
                 fprintf(output, "%02x%02lx%02lx%02lx\n", instPtr->op->opcode, instPtr->opds[0]->value.num, instPtr->opds[1]->value.num, instPtr->opds[2]->value.num);
             else
                 fprintf(output, "%02x%02lx%02lx%02lx\n", instPtr->op->opcode+1, instPtr->opds[0]->value.num, instPtr->opds[1]->value.num, instPtr->opds[2]->value.num);
         }
         else {
+            //Cuida dos outros registradores
             fprintf(output, "%02x", instPtr->op->opcode);
             for (int i = 0; i < 2; i++)
                 if (instPtr->op->opd_types[i] != OP_NONE)
@@ -328,12 +287,11 @@ int assemble(const char* filename, FILE* input, FILE* output) {
             fprintf(output, "\n");
         }
     }
-    verify(alias_table);
     buffer_destroy(p);
     buffer_destroy(line);
     stable_destroy(alias_table);
     stable_destroy(label_table);
     stable_destroy(extern_table);
-    //Destroy instr linked list
+    instr_destroy(instVec);
     return 1;
 }

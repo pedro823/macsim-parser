@@ -16,7 +16,7 @@ int ispseudo(Operator op) {
 }
 
 int parse(const char *s, SymbolTable alias_table, Instruction **instr, const char **errptr) {
-    char *line, *label, *reader;
+    char *line, *label;
     Buffer *analizer;
     InsertionResult result;
     Instruction *finalInstr;
@@ -472,38 +472,11 @@ int parse(const char *s, SymbolTable alias_table, Instruction **instr, const cha
                 *errptr = s + i;
                 return 0;
             }
-            if (ret != NULL || (lineOp.opcode >= JMP && lineOp.opcode <= GETAB) || lineOp.opcode == EXTERN) {
+            if (ret != NULL || (lineOp.opcode >= JMP && lineOp.opcode <= GETAB) || lineOp.opcode == EXTERN || lineOp.opcode == CALL) {
                 //printf("\t\tIt's a LABEL!\n");
                 opds[j] = operand_create_label(analizer->data);
                 continue;
             }
-            /*
-            else if(lineOp.opcode == EXTERN) {
-                //It's an EXTERN!
-                //is it a valid label?
-                if(analizer->data[0] == '_' || isalpha(analizer->data[0])) {
-                    int reader = 0;
-                    while (reader < analizer->i && (analizer->data[reader] == '_' || isalnum(analizer->data[reader]))) {
-                        reader++;
-                    }
-                    if (reader >= analizer->i) {
-                        InsertionResult temp;
-                        temp = stable_insert(alias_table, analizer->data);
-                        if(temp.new == 0) {
-                            set_error_msg("Declared label twice");
-                            *errptr = s + i;
-                            return 0;
-                        }
-                        opds[j] = operand_create_label(analizer->data);
-                        continue;
-                    }
-                    else {
-                        set_error_msg("Invalid lable");
-                        *errptr = s + i;
-                        return 0;
-                    }
-                }
-            }*/
         }
         // i - analizer->i + 1
         set_error_msg("Invalid operand");
