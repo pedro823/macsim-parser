@@ -16,7 +16,7 @@ int ispseudo(Operator op) {
 }
 
 int isHexa(const char c) {
-    return (isdigit(c) || c >= 'a' || c <= 'f' || c >= 'A' || c <= 'F');
+    return (isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
 }
 
 int parse(const char *s, SymbolTable alias_table, Instruction **instr, const char **errptr) {
