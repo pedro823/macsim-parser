@@ -2,6 +2,7 @@
 #include "buffer.h"
 #include "taglist.h"
 #include <string.h>
+#include <stdlib.h>
 
 void printUsage(char* name) {
     printf("Usage: %s <Outfile> [objects...]\n", name);
@@ -15,15 +16,30 @@ int isTag(char* line) {
     return line[0] == '_' && line[1] && line[1] == '_';
 }
 
-// converts int to hex
+// Formata tag para um JMP tag.
+// DESTRUTIVA -- Não usar em dados sensíveis
+char* format(char* tag) {
+    int i = 2;
+    while(!(tag[i] == '_' && tag[i + 1] == '_'))
+        i++;
+    tag[i] = '\0';
+    return tag + 2;
+}
+
+// converte int para hex
 char* itoh(int num) {
-    char ret[6];
+    char* ret = malloc(6);
     int i;
     for(i = 0; i < 6; i++)
         ret[i] = '0';
-    i = 0;
+    i = 5;
     while(num) {
-        ret[i++] = n % 16 + '0';
+        if(num % 16 < 10) {
+            ret[i--] = num % 16 + '0';
+        }
+        else {
+            ret[i--] = (num % 16) - 10 + 'a';
+        }
         num >>= 4;
     }
     return ret;
@@ -47,6 +63,9 @@ void printError(char* name, int error) {
             // faltando.
             fprintf(stderr, "ERROR: %s: Undefined reference to ", name);
 
+        case 3:
+            // Main nunca foi definida!
+            fprintf(stderr, "ERROR: %s: main was not defined.\n", name);
         default:
             fprintf(stderr, "ERROR: %s: Unknown error.\n", name);
     }
@@ -59,45 +78,46 @@ int correctJump(FILE* outfile, char* outfileName, char* jumpName, int line) {
     fgetpos(outfile, &last);
     fflush(outfile);
     fseek(outfile, 0, SEEK_SET);
-    Buffer aux = buffer_create();
-    if(strcmp(jumpName, "main")) {
+    Buffer* aux = buffer_create();
+    if(strcmp(jumpName, "main") == 0) {
         read_line(outfile, aux);
-        if(strcmp(aux->data, "JMPTOMAIN  \n" != 0)) {
+        if(strcmp(aux->data, "JMPTOMAIN  \n") != 0) {
             buffer_destroy(aux);
             return -1;
         }
-        fsetpos(outfile, -aux->i, SEEK_CUR);
+        fseek(outfile, -aux->i, SEEK_CUR);
         fprintf(outfile, "48");
-        char n[6] = itoh(line);
-        fprintf(outfile, "%s\n", n);
+        char *n = itoh(line);
+        fprintf(outfile, "%s   ", n);
     }
     else {
-        // Inseguro -- buffer overflow possível
+        // Inseguro -- buffer overflow possível?
         char jumpFind[300];
         //
 
-        int findLine = 0;
+        int findLine = 1, tmp, tmp2;
         sprintf(jumpFind, "JMP %s\n", jumpName);
-        while(read_line(outfile, aux)) {
-            if(strcmp(jumpFind, aux->data) == 0) {
+        while(tmp = read_line(outfile, aux)) {
+            if((tmp2 = strcmp(jumpFind, aux->data)) == 0) {
                 int diff = line - findLine;
+                fseek(outfile, -tmp, SEEK_CUR);
                 if(diff < 0) {
-                    // TODO: CHECAR SE O READ_LINE AVANÇA
-                    // O APONTADOR DE PROXIMO CARACTERE
+                    // read_line avança o apontador do próximo caractere
                     fprintf(outfile, "49");
                     diff = -diff;
                 }
                 else {
                     fprintf(outfile, "48");
                 }
-                char toPrint[6] = itoh(diff);
+                char* toPrint = itoh(diff);
                 // Pula para a linha correta
-                fprintf(outfile, "%s\n", toPrint);
+                fprintf(outfile, "%-300s\n", toPrint);
             }
+            fprintf(stderr, "aux returned %d on line %d\n", tmp2, findLine);
             findLine++;
         }
     }
-    fsetpos(outfile, last);
+    fsetpos(outfile, &last);
     buffer_destroy(aux);
     return 1;
 }
@@ -111,7 +131,7 @@ int main(int argc, char **argv) {
     int noFiles = argc - 2;
     if(noFiles == 0) {
         printError(argv[0], 0);
-        printUsage();
+        printUsage(argv[0]);
         return -1;
     }
     Buffer *b = buffer_create();
@@ -119,7 +139,7 @@ int main(int argc, char **argv) {
     FILE** files = malloc(noFiles * sizeof(FILE*));
     _Tag tlist = tag_create();
     for(int i = 0; i < noFiles; i++) {
-        files[i] = fopen(argv[i + 2]);
+        files[i] = fopen(argv[i + 2], "r");
     }
     //Deixa um JMPTOMAIN temporário
     fprintf(outfile, "JMPTOMAIN  \n");
@@ -128,7 +148,7 @@ int main(int argc, char **argv) {
         while(read_line(files[i], b) != 0) {
             if(isTag(b->data)) {
                 // guarda todas as tags em uma lista ligada
-                char* temp = b->data + 2; // Tira o __ do começo da tag
+                char* temp = format(b->data); // Tira o __ do começo da tag
                 tag_insert(&tlist, temp, line);
             }
             else {
@@ -138,13 +158,13 @@ int main(int argc, char **argv) {
             }
         }
     }
-    for(_Tag i = tlist, i != NULL; i = i->next) {
-        if((aux = correctJump(outfile, argv[1], i->tagName, i->linePos) < 0) {
+    for(_Tag i = tlist; i != NULL; i = i->next) {
+        if((aux = correctJump(outfile, argv[1], i->tagName, i->linePos)) < 0) {
             // Erro em correctJump
             printError(argv[0], -aux);
             fclose(outfile);
             tag_destroy(tlist);
-            for(int j = 0; j < noFiles, j++) {
+            for(int j = 0; j < noFiles; j++) {
                 fclose(files[j]);
             }
             return -1;

@@ -6,8 +6,9 @@ CFLAGDB:=--std=c99 -Wall -g
 
 macas: macas.o asm.o error.o parser.o buffer.o stable.o asmtypes.o optable.o
 	$(CC) $^ -o $@
+	rm -f *.o *.gch
 
-macasdb: macas.o asm.o error.o parser.o buffer.o stable.o asmtypes.o optable.o
+maclk: maclk.o taglist.o buffer.o error.o
 	$(CC) $^ -o $@
 
 parser: parser.o buffer.o asmtypes.o stable.o optable.o error.o parse_test.o
@@ -20,4 +21,4 @@ parserdb: parser.o buffer.o asmtypes.o stable.o optable.o error.o parse_test.o
 	$(CC) $^ $(CFLAGDB) -c
 
 clean:
-	rm -f *.o *.gch parser parserdb macas
+	rm -f *.o *.gch parser parserdb macas maclk
